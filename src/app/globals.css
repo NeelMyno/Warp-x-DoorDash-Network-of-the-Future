@@ -1,0 +1,90 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+:root {
+  /* shadcn semantic vars (dark-only V1) */
+  --background: var(--warp-bg);
+  --foreground: var(--warp-text-1);
+
+  --card: var(--warp-surface-1);
+  --card-foreground: var(--warp-text-1);
+
+  --popover: var(--warp-surface-2);
+  --popover-foreground: var(--warp-text-1);
+
+  --primary: var(--warp-accent);
+  --primary-foreground: var(--warp-accent-ink);
+
+  --secondary: var(--warp-surface-2);
+  --secondary-foreground: var(--warp-text-1);
+
+  --muted: var(--warp-surface-2);
+  --muted-foreground: var(--warp-muted);
+
+  --accent: var(--warp-surface-3);
+  --accent-foreground: var(--warp-text-1);
+
+  --destructive: #ff3b3b;
+  --destructive-foreground: var(--warp-text-1);
+
+  --border: var(--warp-border);
+  --input: var(--warp-border);
+  --ring: var(--warp-ring);
+
+  --radius: var(--warp-radius-md);
+  --shadow-elev-1: var(--warp-shadow-elev-1);
+  --shadow-elev-2: var(--warp-shadow-elev-2);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-ui), ui-sans-serif, system-ui, -apple-system, Segoe UI,
+    Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: var(--font-code), ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius: var(--radius);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--warp-bg-gradient);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: var(--warp-fs-body);
+  line-height: var(--warp-lh-body);
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+@layer base {
+  :where(h1, h2, h3, h4, h5) {
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: rgba(0, 255, 51, 0.22);
+  }
+}
