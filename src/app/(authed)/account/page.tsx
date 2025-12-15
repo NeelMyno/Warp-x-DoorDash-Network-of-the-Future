@@ -17,16 +17,12 @@ function formatTimestamp(value: string | undefined) {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reason?: string }>;
+  searchParams: Promise<{ reason?: string; pw?: string }>;
 }) {
   const { supabase, user, role } = await requireUser();
-  const { reason } = await searchParams;
+  const { reason, pw } = await searchParams;
 
   const profile = await getProfile(supabase, user.id);
-  const { data: isAdminData } = await supabase.rpc("is_admin");
-  const isAdminRpc = isAdminData === true;
-
-  const adminSql = `update public.profiles set role = 'admin' where id = '${user.id}';`;
 
   return (
     <div className="space-y-6">
@@ -60,6 +56,17 @@ export default async function AccountPage({
         </div>
       ) : null}
 
+      {pw === "updated" ? (
+        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+          <div className="text-sm font-semibold text-foreground">
+            Password updated successfully
+          </div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Your password has been updated and your session is active.
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <ContentPanel
           title="Identity"
@@ -73,6 +80,16 @@ export default async function AccountPage({
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
               <div className="min-w-0">
+                <div className="text-xs text-muted-foreground">Full name</div>
+                <div className="mt-1 truncate text-sm font-medium text-foreground">
+                  {profile?.fullName ?? "—"}
+                </div>
+              </div>
+              {profile?.fullName ? <CopyButton value={profile.fullName} /> : null}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
+              <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">Email</div>
                 <div className="mt-1 truncate text-sm font-medium text-foreground">
                   {user.email ?? "—"}
@@ -80,47 +97,69 @@ export default async function AccountPage({
               </div>
               {user.email ? <CopyButton value={user.email} /> : null}
             </div>
-
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
-              <div className="min-w-0">
-                <div className="text-xs text-muted-foreground">User ID</div>
-                <div className="mt-1 truncate font-mono text-sm text-foreground">
-                  {user.id}
-                </div>
-              </div>
-              <CopyButton value={user.id} />
-            </div>
           </div>
         </ContentPanel>
 
         <ContentPanel
           title="Profile"
           description="Row from public.profiles (role is stored here)."
-          right={
-            <Badge
-              variant={isAdminRpc ? "accent" : "outline"}
-              className="px-2 py-0.5 text-[11px]"
-              title="Result of public.is_admin()"
-            >
-              is_admin(): {isAdminRpc ? "true" : "false"}
-            </Badge>
-          }
         >
           {profile ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-xs text-muted-foreground">Role</div>
-                  <div className="mt-1 text-sm font-medium text-foreground">
-                    {profile.role}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="text-xs text-muted-foreground">Role</div>
+                    <div className="mt-1 text-sm font-medium text-foreground">
+                      {profile.role}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={profile.role === "admin" ? "accent" : "muted"}
+                    className="px-2 py-0.5 text-[11px]"
+                  >
+                    {profile.role === "admin" ? "ADMIN" : "USER"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="text-xs text-muted-foreground">Status</div>
+                    <div className="mt-1 text-sm font-medium text-foreground">
+                      {profile.status ?? "—"}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      profile.status === "disabled"
+                        ? "outline"
+                        : profile.status === "invited"
+                          ? "outline"
+                          : "muted"
+                    }
+                    className="px-2 py-0.5 text-[11px]"
+                  >
+                    {profile.status ?? "unknown"}
+                    {profile.status === "invited" ? (
+                      <span className="ml-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                    ) : null}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-border bg-background/15 px-4 py-3">
+                  <div className="text-xs text-muted-foreground">Profile email</div>
+                  <div className="mt-1 truncate font-mono text-xs text-foreground">
+                    {profile.email ?? "—"}
                   </div>
                 </div>
-                <Badge
-                  variant={profile.role === "admin" ? "accent" : "muted"}
-                  className="px-2 py-0.5 text-[11px]"
-                >
-                  {profile.role === "admin" ? "ADMIN" : "USER"}
-                </Badge>
+                <div className="rounded-xl border border-border bg-background/15 px-4 py-3">
+                  <div className="text-xs text-muted-foreground">Full name</div>
+                  <div className="mt-1 truncate text-sm text-foreground">
+                    {profile.fullName ?? "—"}
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -150,79 +189,21 @@ export default async function AccountPage({
         </ContentPanel>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {role === "admin" ? (
         <ContentPanel
-          title="What you can access"
-          description="Based on the current profile role."
+          title="Setup & Diagnostics"
+          description="Admin-only checks for Supabase setup drift."
+          right={
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin?tab=setup">Open diagnostics</Link>
+            </Button>
+          }
         >
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
-              <div className="text-muted-foreground">Admin module</div>
-              <Badge
-                variant={role === "admin" ? "accent" : "muted"}
-                className="px-2 py-0.5 text-[11px]"
-              >
-                {role === "admin" ? "Allowed" : "Not allowed"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/15 px-4 py-3">
-              <div className="text-muted-foreground">Content Studio</div>
-              <Badge
-                variant={role === "admin" ? "accent" : "muted"}
-                className="px-2 py-0.5 text-[11px]"
-              >
-                {role === "admin" ? "Allowed" : "Not allowed"}
-              </Badge>
-            </div>
+          <div className="text-sm text-muted-foreground">
+            Use this when environments drift or content/workflows behave unexpectedly.
           </div>
         </ContentPanel>
-
-        {role !== "admin" ? (
-          <ContentPanel
-            title="Admin setup (informational)"
-            description="No self-serve escalation: an existing admin must update your role."
-          >
-            <div className="space-y-3">
-              <div className="text-sm text-muted-foreground">
-                Role is stored in{" "}
-                <span className="font-mono text-foreground">
-                  public.profiles.role
-                </span>
-                . An admin can run:
-              </div>
-
-              <div className="rounded-2xl border border-border bg-background/15 px-4 py-3">
-                <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
-                  {adminSql}
-                </pre>
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <CopyButton value={adminSql} label="Copy SQL" />
-                <div className="text-xs text-muted-foreground">
-                  Then refresh this page.
-                </div>
-              </div>
-            </div>
-          </ContentPanel>
-        ) : (
-          <ContentPanel
-            title="Setup & Diagnostics"
-            description="Admin-only checks for Supabase setup drift."
-            right={
-              <Button asChild variant="outline" size="sm">
-                <Link href="/admin?tab=setup">Open diagnostics</Link>
-              </Button>
-            }
-          >
-            <div className="text-sm text-muted-foreground">
-              Use this when environments drift or content/workflows behave
-              unexpectedly.
-            </div>
-          </ContentPanel>
-        )}
-      </div>
+      ) : null}
     </div>
   );
 }
-

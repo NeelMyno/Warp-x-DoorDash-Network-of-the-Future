@@ -4,15 +4,10 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
+import {
+  type ModuleContentView,
+} from "@/lib/content/module-content-view";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-export type ModuleContentView = "published" | "draft";
-
-export function isModuleContentView(
-  value: string | undefined,
-): value is ModuleContentView {
-  return value === "published" || value === "draft";
-}
 
 export function ModuleViewTabs({
   value,
@@ -50,4 +45,3 @@ export function ModuleViewTabs({
     </Tabs>
   );
 }
-

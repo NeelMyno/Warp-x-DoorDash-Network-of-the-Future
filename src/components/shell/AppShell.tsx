@@ -9,11 +9,13 @@ import { SidebarNav } from "@/components/shell/SidebarNav";
 
 export function AppShell({
   userEmail,
+  userFullName,
   role,
   modules,
   children,
 }: {
   userEmail: string;
+  userFullName: string | null;
   role: UserRole;
   modules: ModuleConfig[];
   children: React.ReactNode;
@@ -29,7 +31,7 @@ export function AppShell({
         <SidebarNav role={role} modules={modules} />
 
         <div className="flex min-w-0 flex-col">
-          <AppHeader userEmail={userEmail} role={role} />
+          <AppHeader userEmail={userEmail} userFullName={userFullName} role={role} />
           <main className="flex-1 px-6 py-5">{children}</main>
         </div>
       </div>

@@ -4,17 +4,18 @@ import type { ModuleConfig } from "@/config/modules";
 import type { UserRole } from "@/lib/auth/roles";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { UserMenu } from "@/components/app-shell/user-menu";
 
 export function AppShell({
   userEmail,
+  userFullName,
   role,
   modules,
   children,
 }: {
   userEmail: string;
+  userFullName: string | null;
   role: UserRole;
   modules: ModuleConfig[];
   children: React.ReactNode;
@@ -37,12 +38,6 @@ export function AppShell({
                   <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">
                     Warp x DoorDash: Network of the Future Portal
                   </h1>
-                  <Badge
-                    variant="accent"
-                    className="hidden px-2 py-0.5 text-[11px] sm:inline-flex"
-                  >
-                    V1
-                  </Badge>
                 </div>
                 <p className="mt-1 truncate text-xs text-muted-foreground">
                   Private, authenticated workspace
@@ -51,6 +46,7 @@ export function AppShell({
 
               <UserMenu
                 email={userEmail}
+                fullName={userFullName}
                 role={role}
                 signOutAction={signOut}
               />
@@ -63,4 +59,3 @@ export function AppShell({
     </div>
   );
 }
-

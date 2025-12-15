@@ -102,3 +102,32 @@ export function IconCheck(props: IconProps) {
     </IconBase>
   );
 }
+
+export function IconDotsVertical(props: IconProps) {
+  return (
+    <IconBase {...props} title={props.title ?? "More"}>
+      <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+    </IconBase>
+  );
+}
+
+export function IconEye(props: IconProps) {
+  return (
+    <IconBase {...props} title={props.title ?? "Show"}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </IconBase>
+  );
+}
+
+export function IconEyeOff(props: IconProps) {
+  return (
+    <IconBase {...props} title={props.title ?? "Hide"}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M4 4l16 16" />
+    </IconBase>
+  );
+}

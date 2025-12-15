@@ -16,20 +16,35 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconChevronDown, IconLogOut, IconUser } from "@/components/icons";
 
-function getInitials(email: string) {
-  const base = email.split("@")[0] ?? "user";
+function getInitials(input: { fullName: string | null; email: string }) {
+  const fullName = input.fullName?.trim();
+  if (fullName) {
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      const a = parts[0]?.[0] ?? "U";
+      const b = parts[parts.length - 1]?.[0] ?? "S";
+      return `${a}${b}`.toUpperCase();
+    }
+    return parts[0]!.slice(0, 2).toUpperCase();
+  }
+
+  const base = input.email.split("@")[0] ?? "user";
   return base.slice(0, 2).toUpperCase();
 }
 
 export function UserMenu({
   email,
+  fullName,
   role,
   signOutAction,
 }: {
   email: string;
+  fullName: string | null;
   role: UserRole;
   signOutAction: () => Promise<void>;
 }) {
+  const displayName = fullName?.trim() ? fullName.trim() : email;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -41,11 +56,11 @@ export function UserMenu({
           )}
         >
           <span className="grid h-9 w-9 place-items-center rounded-full border border-border bg-muted/60 text-xs font-semibold text-foreground">
-            {getInitials(email)}
+            {getInitials({ fullName, email })}
           </span>
           <span className="hidden min-w-0 flex-col sm:flex">
             <span className="truncate text-sm font-medium leading-tight text-foreground">
-              {email}
+              {displayName}
             </span>
             <span className="text-xs text-muted-foreground">Account</span>
           </span>
@@ -56,8 +71,15 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel className="flex items-center justify-between gap-3">
-          <span className="truncate">{email}</span>
+        <DropdownMenuLabel className="flex items-start justify-between gap-3">
+          <span className="min-w-0">
+            <div className="truncate text-xs font-medium text-foreground">
+              {displayName}
+            </div>
+            <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+              {email}
+            </div>
+          </span>
           <Badge
             variant={role === "admin" ? "accent" : "muted"}
             className="px-2 py-0.5 text-[11px]"

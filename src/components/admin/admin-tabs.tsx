@@ -5,10 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export type AdminTabKey = "content" | "setup";
+export type AdminTabKey = "content" | "users" | "setup";
 
 function normalizeTab(value: unknown): AdminTabKey {
-  return value === "setup" ? "setup" : "content";
+  if (value === "users") return "users";
+  if (value === "setup") return "setup";
+  return "content";
 }
 
 export function AdminTabs({ value }: { value: AdminTabKey }) {
@@ -33,6 +35,9 @@ export function AdminTabs({ value }: { value: AdminTabKey }) {
         <TabsTrigger value="content" className="text-xs">
           Content Studio
         </TabsTrigger>
+        <TabsTrigger value="users" className="text-xs">
+          Users
+        </TabsTrigger>
         <TabsTrigger value="setup" className="text-xs">
           Setup & Diagnostics
         </TabsTrigger>
@@ -40,4 +45,3 @@ export function AdminTabs({ value }: { value: AdminTabKey }) {
     </Tabs>
   );
 }
-

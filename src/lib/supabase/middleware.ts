@@ -1,10 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
-  const response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
+export function createMiddlewareClient(request: NextRequest, response: NextResponse) {
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -20,10 +18,16 @@ export async function updateSession(request: NextRequest) {
       },
     },
   );
+}
+
+export async function updateSession(request: NextRequest) {
+  const response = NextResponse.next({ request });
+
+  const supabase = createMiddlewareClient(request, response);
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return { response, user };
+  return { response, user, supabase };
 }

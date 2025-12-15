@@ -9,8 +9,10 @@ import { AnchorNav } from "@/components/modules/anchor-nav";
 import { CopySectionLink } from "@/components/modules/copy-section-link";
 import {
   isModuleContentView,
-  ModuleViewTabs,
   type ModuleContentView,
+} from "@/lib/content/module-content-view";
+import {
+  ModuleViewTabs,
 } from "@/components/modules/view-tabs";
 import { Badge } from "@/components/ui/badge";
 import { ContentPanel } from "@/components/panels/ContentPanel";

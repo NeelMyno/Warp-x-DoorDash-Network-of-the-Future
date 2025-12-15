@@ -2,15 +2,16 @@ import * as React from "react";
 
 import type { UserRole } from "@/lib/auth/roles";
 import { signOut } from "@/app/actions/auth";
-import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { UserMenu } from "@/components/app-shell/user-menu";
 
 export function AppHeader({
   userEmail,
+  userFullName,
   role,
 }: {
   userEmail: string;
+  userFullName: string | null;
   role: UserRole;
 }) {
   return (
@@ -28,12 +29,6 @@ export function AppHeader({
             <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">
               Warp x DoorDash: Network of the Future
             </h1>
-            <Badge
-              variant="accent"
-              className="hidden px-2 py-0.5 text-[11px] sm:inline-flex"
-            >
-              V1
-            </Badge>
           </div>
           <p className="mt-1 truncate text-xs text-muted-foreground">
             Private, authenticated portal
@@ -41,7 +36,12 @@ export function AppHeader({
         </div>
       </div>
 
-      <UserMenu email={userEmail} role={role} signOutAction={signOut} />
+      <UserMenu
+        email={userEmail}
+        fullName={userFullName}
+        role={role}
+        signOutAction={signOut}
+      />
     </header>
   );
 }

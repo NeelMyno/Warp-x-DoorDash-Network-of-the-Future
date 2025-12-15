@@ -12,14 +12,36 @@ import { LoginForm } from "@/app/login/login-form";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; reason?: string }>;
 }) {
-  const { redirect } = await searchParams;
+  const { redirect, reason } = await searchParams;
   const redirectTo = typeof redirect === "string" ? redirect : "/";
 
   return (
     <PageShell className="grid place-items-center">
-      <div className="w-full max-w-md">
+      <div className="mx-auto w-full max-w-md">
+        {reason === "invalid-link" ? (
+          <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+            <div className="text-sm font-semibold text-foreground">
+              Link invalid or expired
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              This link is invalid or has expired. Please request a new one.
+            </div>
+          </div>
+        ) : null}
+
+        {reason === "disabled" ? (
+          <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+            <div className="text-sm font-semibold text-foreground">
+              Access disabled
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Your portal access is disabled. Contact an admin if you believe this is a mistake.
+            </div>
+          </div>
+        ) : null}
+
         <div className="mb-6 text-center">
           <div className="mb-4 flex justify-center">
             <div className="sm:hidden">

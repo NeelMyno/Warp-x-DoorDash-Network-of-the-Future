@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useFormStatus } from "react-dom";
 
-import { signInWithPassword } from "@/app/actions/auth";
+import { setPassword } from "@/app/auth/set-password/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,40 +12,40 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Signing in…" : "Sign in"}
+      {pending ? "Saving…" : "Save password"}
     </Button>
   );
 }
 
-export function LoginForm({ redirectTo }: { redirectTo: string }) {
-  const [state, formAction] = React.useActionState(signInWithPassword, {});
+export function SetPasswordForm() {
+  const [state, formAction] = React.useActionState(setPassword, {});
 
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="redirectTo" value={redirectTo} />
-
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="name@company.com"
-          required
-          autoFocus
-        />
-      </div>
-
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input
           id="password"
           name="password"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           placeholder="••••••••"
           required
+          minLength={8}
+          autoFocus
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirm">Confirm password</Label>
+        <Input
+          id="confirm"
+          name="confirm"
+          type="password"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          required
+          minLength={8}
         />
       </div>
 
@@ -58,7 +58,8 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
       <SubmitButton />
 
       <p className="text-xs text-muted-foreground">
-        This is a private portal. Access requires an approved account.
+        Your invite link is single-use. If you hit an error, ask an admin to
+        send a new invite.
       </p>
     </form>
   );

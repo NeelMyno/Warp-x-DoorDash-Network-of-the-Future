@@ -2,6 +2,11 @@ import type { ContentBlock, ModuleSectionKey } from "@/config/modules";
 import { MODULES } from "@/config/modules";
 import { ContentStudio } from "@/components/admin/content-studio";
 import { AdminTabs, type AdminTabKey } from "@/components/admin/admin-tabs";
+import {
+  UsersPanel,
+  type PortalUserRow,
+  type UserAdminAuditEvent,
+} from "@/components/admin/users/users-panel";
 import { SetupChecklist } from "@/components/admin/setup-checklist";
 import { requireUser } from "@/lib/auth/require-user";
 import { parseBlocksJson } from "@/lib/content/blocks";
@@ -9,7 +14,9 @@ import { getAdminDiagnostics } from "@/lib/diagnostics/admin";
 import { redirect } from "next/navigation";
 
 function normalizeTab(value: unknown): AdminTabKey {
-  return value === "setup" ? "setup" : "content";
+  if (value === "users") return "users";
+  if (value === "setup") return "setup";
+  return "content";
 }
 
 export default async function AdminPage({
@@ -46,6 +53,110 @@ export default async function AdminPage({
         </div>
 
         <SetupChecklist diagnostics={diagnostics} />
+      </div>
+    );
+  }
+
+  if (activeTab === "users") {
+    let usersAvailable = true;
+    let usersError: string | undefined;
+    let users: PortalUserRow[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, email, full_name, role, status, invited_at, invited_by, disabled_at, created_at",
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        usersAvailable = false;
+        usersError = error.message;
+      } else if (data) {
+        users = (data as unknown[]).map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
+            id: String(r.id),
+            email: typeof r.email === "string" ? r.email : null,
+            fullName: typeof r.full_name === "string" ? r.full_name : null,
+            role: r.role === "admin" ? "admin" : "user",
+            status:
+              r.status === "invited"
+                ? "invited"
+                : r.status === "disabled"
+                  ? "disabled"
+                  : "active",
+            invitedAt: typeof r.invited_at === "string" ? r.invited_at : undefined,
+            invitedBy: typeof r.invited_by === "string" ? r.invited_by : undefined,
+            disabledAt: typeof r.disabled_at === "string" ? r.disabled_at : undefined,
+            createdAt: typeof r.created_at === "string" ? r.created_at : undefined,
+          } satisfies PortalUserRow;
+        });
+      }
+    } catch (err) {
+      usersAvailable = false;
+      usersError = err instanceof Error ? err.message : String(err);
+    }
+
+    let auditAvailable = true;
+    let auditError: string | undefined;
+    let auditEvents: UserAdminAuditEvent[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from("user_admin_audit")
+        .select("id, created_at, actor_email, action, target_email, metadata")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (error) {
+        auditAvailable = false;
+        auditError = error.message;
+      } else if (data) {
+        auditEvents = (data as unknown[]).map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
+            id: String(r.id),
+            createdAt: String(r.created_at),
+            actorEmail: typeof r.actor_email === "string" ? r.actor_email : null,
+            action: String(r.action),
+            targetEmail: typeof r.target_email === "string" ? r.target_email : null,
+            metadata:
+              r.metadata && typeof r.metadata === "object"
+                ? (r.metadata as Record<string, unknown>)
+                : {},
+          } satisfies UserAdminAuditEvent;
+        });
+      }
+    } catch (err) {
+      auditAvailable = false;
+      auditError = err instanceof Error ? err.message : String(err);
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-[length:var(--warp-fs-page-title)] font-semibold leading-[var(--warp-lh-page-title)] tracking-tight text-foreground">
+              Admin
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Invite users and manage portal access.
+            </p>
+          </div>
+          <AdminTabs value={activeTab} />
+        </div>
+
+        <UsersPanel
+          users={users}
+          currentUserId={user.id}
+          dbAvailable={usersAvailable}
+          dbError={usersError}
+          auditAvailable={auditAvailable}
+          auditError={auditError}
+          auditEvents={auditEvents}
+        />
       </div>
     );
   }
