@@ -21,12 +21,7 @@ export function ImageBlock({
   className?: string;
 }) {
   const imageChromeClass =
-    treatment === "panel"
-      ? "overflow-hidden rounded-2xl border border-border/70 bg-background/20"
-      : cn(
-          "overflow-hidden rounded-2xl border border-border/70 bg-background/20",
-          "shadow-[var(--warp-shadow-elev-1)]",
-        );
+    "overflow-hidden rounded-2xl border border-border/70 bg-background/20";
 
   const image = (
     <div

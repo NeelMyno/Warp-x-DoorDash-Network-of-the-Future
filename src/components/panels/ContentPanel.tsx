@@ -18,7 +18,7 @@ export function ContentPanel({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-border bg-card shadow-[var(--warp-shadow-elev-1)]",
+        "rounded-2xl border border-border bg-card",
         className,
       )}
     >

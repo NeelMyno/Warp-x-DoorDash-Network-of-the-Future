@@ -27,7 +27,7 @@ function NavLink({
       className={cn(
         "group flex items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active
-          ? "border-border bg-muted/70 text-foreground shadow-[var(--shadow-elev-1)]"
+          ? "border-border bg-muted/70 text-foreground"
           : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground",
       )}
     >
@@ -52,8 +52,8 @@ export function Sidebar({
   return (
     <aside className="flex flex-col gap-4 border-r border-border bg-background/35 p-4 backdrop-blur">
       <div className="flex items-center gap-3 px-2 pt-1">
-        <div className="grid h-10 w-10 place-items-center rounded-xl border border-primary/20 bg-primary/10 shadow-[var(--shadow-elev-1)]">
-          <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_rgba(0,255,51,0.10)]" />
+        <div className="grid h-10 w-10 place-items-center rounded-xl border border-primary/20 bg-primary/10">
+          <span className="h-2.5 w-2.5 rounded-full bg-primary" />
         </div>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold leading-none text-foreground">

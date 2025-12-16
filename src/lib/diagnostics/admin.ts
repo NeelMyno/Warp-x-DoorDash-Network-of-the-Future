@@ -29,8 +29,7 @@ export type AdminDiagnostics = {
     fail: number;
   };
   counts?: {
-    publishedSections?: number;
-    draftSections?: number;
+    moduleSections?: number;
     auditEvents?: number;
     assets?: number;
   };
@@ -371,14 +370,7 @@ export async function getAdminDiagnostics(input: {
   const fail = checks.filter((c) => c.status === "fail").length;
 
   const counts: AdminDiagnostics["counts"] = {};
-  counts.publishedSections = await safeCount(supabase, "module_sections", {
-    column: "status",
-    value: "published",
-  });
-  counts.draftSections = await safeCount(supabase, "module_sections", {
-    column: "status",
-    value: "draft",
-  });
+  counts.moduleSections = await safeCount(supabase, "module_sections");
   counts.auditEvents = await safeCount(supabase, "module_section_audit");
   counts.assets = await safeCount(supabase, "assets");
 
@@ -389,4 +381,3 @@ export async function getAdminDiagnostics(input: {
     counts,
   };
 }
-

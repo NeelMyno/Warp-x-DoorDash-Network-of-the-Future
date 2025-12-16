@@ -31,7 +31,7 @@ export function AdminTabs({ value }: { value: AdminTabKey }) {
         router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       }}
     >
-      <TabsList className="h-9 shadow-[var(--warp-shadow-elev-1)]">
+      <TabsList className="h-9">
         <TabsTrigger value="content" className="text-xs">
           Content Studio
         </TabsTrigger>

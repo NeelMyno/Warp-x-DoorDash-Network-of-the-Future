@@ -5,11 +5,9 @@ import * as React from "react";
 import type { ContentBlock, ModuleConfig, ModuleSectionKey } from "@/config/modules";
 import type { AuditEvent } from "@/app/(authed)/admin/actions";
 import {
-  copyPublishedToDraft,
   listAuditEvents,
-  publishFromDraft,
   restoreFromAudit,
-  upsertDraft,
+  saveModuleSection,
 } from "@/app/(authed)/admin/actions";
 import { createClient as createBrowserClient } from "@/lib/supabase/browser";
 import { PORTAL_ASSETS_BUCKET } from "@/lib/assets/constants";
@@ -39,20 +37,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ContentPanel } from "@/components/panels/ContentPanel";
-import { Blocks } from "@/components/content/blocks";
 import { ImageBlock } from "@/components/blocks/ImageBlock";
 import { BulletBlock } from "@/components/blocks/BulletBlock";
-import { KpiStrip } from "@/components/blocks/KpiStrip";
-import { TimelineBlock } from "@/components/blocks/TimelineBlock";
+import { ProseBlock } from "@/components/blocks/ProseBlock";
 import { AssetPickerDialog } from "@/components/admin/asset-picker";
 
-type ModuleSectionStatus = "draft" | "published";
-type StudioMode = "edit" | "compare" | "history";
+type StudioMode = "edit" | "history";
 
 type SectionDoc = {
   blocks: ContentBlock[] | null;
   updatedAt?: string;
-  publishedAt?: string | null;
 };
 
 export type ContentStudioInitialData = {
@@ -61,21 +55,13 @@ export type ContentStudioInitialData = {
   auditAvailable: boolean;
   auditError?: string;
   modules: ModuleConfig[];
-  sectionsByModule: Record<
-    string,
-    Partial<Record<ModuleSectionKey, Partial<Record<ModuleSectionStatus, SectionDoc>>>>
-  >;
+  sectionsByModule: Record<string, Partial<Record<ModuleSectionKey, SectionDoc>>>;
 };
 
 type StudioSectionState = {
-  draft: {
+  content: {
     blocks: ContentBlock[];
     source: "db" | "seed";
-    updatedAt?: string;
-  };
-  published: {
-    blocks: ContentBlock[] | null;
-    publishedAt?: string | null;
     updatedAt?: string;
   };
 };
@@ -93,9 +79,8 @@ function deepCloneBlocks(blocks: ContentBlock[]) {
 }
 
 function blockTypeLabel(type: ContentBlock["type"]) {
-  if (type === "kpis") return "KPI strip";
   if (type === "bullets") return "Bullets";
-  if (type === "timeline") return "Timeline";
+  if (type === "prose") return "Prose";
   if (type === "image") return "Image";
   return "Empty";
 }
@@ -114,28 +99,13 @@ function formatRelativeTime(iso: string) {
 }
 
 function auditActionLabel(action: AuditEvent["action"]) {
-  if (action === "publish") return "publish";
-  if (action === "restore") return "restore";
-  return "save draft";
+  if (action === "module_content_updated") return "update";
+  return "update";
 }
 
-function auditActionVariant(action: AuditEvent["action"]) {
-  if (action === "publish") return "accent";
-  if (action === "restore") return "outline";
-  return "muted";
-}
-
-function newKpisBlock(): ContentBlock {
-  return {
-    type: "kpis",
-    title: "Overview",
-    items: [
-      { label: "Metric A", value: "—", delta: "—" },
-      { label: "Metric B", value: "—", delta: "—" },
-      { label: "Metric C", value: "—", delta: "—" },
-      { label: "Metric D", value: "—", delta: "—" },
-    ],
-  };
+function auditActionVariant(action: AuditEvent["action"]): "accent" | "muted" | "outline" {
+  if (action === "module_content_updated") return "outline";
+  return "outline";
 }
 
 function newBulletsBlock(): ContentBlock {
@@ -147,16 +117,12 @@ function newBulletsBlock(): ContentBlock {
   };
 }
 
-function newTimelineBlock(): ContentBlock {
+function newProseBlock(): ContentBlock {
   return {
-    type: "timeline",
-    title: "Timeline",
-    description: "Replace with real milestones.",
-    items: [
-      { date: "Month 1", title: "Define", body: "Clarify scope + success metrics." },
-      { date: "Month 2", title: "Build", body: "Implement workflows + visibility." },
-      { date: "Month 3", title: "Pilot", body: "Run and iterate weekly." },
-    ],
+    type: "prose",
+    title: "Prose",
+    description: "Replace with real content.",
+    content: "Add your content here...",
   };
 }
 
@@ -171,9 +137,6 @@ function newImageBlock(): ContentBlock {
 }
 
 function BlockPreview({ block }: { block: ContentBlock }) {
-  if (block.type === "kpis") {
-    return <KpiStrip title={block.title} items={block.items} />;
-  }
   if (block.type === "bullets") {
     return (
       <BulletBlock
@@ -183,12 +146,12 @@ function BlockPreview({ block }: { block: ContentBlock }) {
       />
     );
   }
-  if (block.type === "timeline") {
+  if (block.type === "prose") {
     return (
-      <TimelineBlock
+      <ProseBlock
         title={block.title}
         description={block.description}
-        items={block.items}
+        content={block.content}
       />
     );
   }
@@ -210,127 +173,6 @@ function BlockPreview({ block }: { block: ContentBlock }) {
     <ContentPanel title={block.title} description={block.description} className="border-dashed bg-muted/20">
       <div className="text-sm text-muted-foreground">Nothing to show yet.</div>
     </ContentPanel>
-  );
-}
-
-function KpisEditor({
-  value,
-  onChange,
-}: {
-  value: Extract<ContentBlock, { type: "kpis" }>;
-  onChange: (next: Extract<ContentBlock, { type: "kpis" }>) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-2">
-        <label className="text-xs font-medium text-muted-foreground">Title</label>
-        <Input
-          value={value.title ?? ""}
-          onChange={(e) => onChange({ ...value, title: e.target.value })}
-          placeholder="Overview"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs font-medium text-muted-foreground">Items</div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              onChange({
-                ...value,
-                items: [...value.items, { label: "", value: "", delta: "" }],
-              })
-            }
-          >
-            Add row
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {value.items.map((item, idx) => (
-            <div
-              key={`${idx}-${item.label}`}
-              className="grid gap-2 rounded-xl border border-border bg-background/20 p-3"
-            >
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="grid gap-1">
-                  <label className="text-[11px] text-muted-foreground">
-                    Label
-                  </label>
-                  <Input
-                    value={item.label}
-                    onChange={(e) => {
-                      const next = [...value.items];
-                      next[idx] = { ...next[idx], label: e.target.value };
-                      onChange({ ...value, items: next });
-                    }}
-                    placeholder="Coverage"
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <label className="text-[11px] text-muted-foreground">
-                    Value
-                  </label>
-                  <Input
-                    value={item.value}
-                    onChange={(e) => {
-                      const next = [...value.items];
-                      next[idx] = { ...next[idx], value: e.target.value };
-                      onChange({ ...value, items: next });
-                    }}
-                    placeholder="—"
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <label className="text-[11px] text-muted-foreground">
-                    Delta
-                  </label>
-                  <Input
-                    value={item.delta ?? ""}
-                    onChange={(e) => {
-                      const next = [...value.items];
-                      next[idx] = { ...next[idx], delta: e.target.value };
-                      onChange({ ...value, items: next });
-                    }}
-                    placeholder="+2%"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="grid flex-1 gap-1">
-                  <label className="text-[11px] text-muted-foreground">
-                    Helper (optional)
-                  </label>
-                  <Input
-                    value={item.helper ?? ""}
-                    onChange={(e) => {
-                      const next = [...value.items];
-                      next[idx] = { ...next[idx], helper: e.target.value };
-                      onChange({ ...value, items: next });
-                    }}
-                    placeholder="placeholder"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const next = value.items.filter((_, i) => i !== idx);
-                    onChange({ ...value, items: next });
-                  }}
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -383,21 +225,21 @@ function BulletsEditor({
   );
 }
 
-function TimelineEditor({
+function ProseEditor({
   value,
   onChange,
 }: {
-  value: Extract<ContentBlock, { type: "timeline" }>;
-  onChange: (next: Extract<ContentBlock, { type: "timeline" }>) => void;
+  value: Extract<ContentBlock, { type: "prose" }>;
+  onChange: (next: Extract<ContentBlock, { type: "prose" }>) => void;
 }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-2">
-        <label className="text-xs font-medium text-muted-foreground">Title</label>
+        <label className="text-xs font-medium text-muted-foreground">Title (optional)</label>
         <Input
-          value={value.title}
+          value={value.title ?? ""}
           onChange={(e) => onChange({ ...value, title: e.target.value })}
-          placeholder="Timeline"
+          placeholder="Section title"
         />
       </div>
       <div className="grid gap-2">
@@ -407,95 +249,17 @@ function TimelineEditor({
         <Input
           value={value.description ?? ""}
           onChange={(e) => onChange({ ...value, description: e.target.value })}
-          placeholder="Short context for this timeline"
+          placeholder="Short context"
         />
       </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs font-medium text-muted-foreground">Items</div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              onChange({
-                ...value,
-                items: [...value.items, { date: "", title: "", body: "" }],
-              })
-            }
-          >
-            Add row
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {value.items.map((item, idx) => (
-            <div
-              key={`${idx}-${item.title}`}
-              className="grid gap-2 rounded-xl border border-border bg-background/20 p-3"
-            >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1">
-                  <label className="text-[11px] text-muted-foreground">
-                    Date
-                  </label>
-                  <Input
-                    value={item.date}
-                    onChange={(e) => {
-                      const next = [...value.items];
-                      next[idx] = { ...next[idx], date: e.target.value };
-                      onChange({ ...value, items: next });
-                    }}
-                    placeholder="Month 1"
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <label className="text-[11px] text-muted-foreground">
-                    Title
-                  </label>
-                  <Input
-                    value={item.title}
-                    onChange={(e) => {
-                      const next = [...value.items];
-                      next[idx] = { ...next[idx], title: e.target.value };
-                      onChange({ ...value, items: next });
-                    }}
-                    placeholder="Define"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-1">
-                <label className="text-[11px] text-muted-foreground">
-                  Body (optional)
-                </label>
-                <Textarea
-                  className="min-h-[84px]"
-                  value={item.body ?? ""}
-                  onChange={(e) => {
-                    const next = [...value.items];
-                    next[idx] = { ...next[idx], body: e.target.value };
-                    onChange({ ...value, items: next });
-                  }}
-                  placeholder="Describe the milestone"
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const next = value.items.filter((_, i) => i !== idx);
-                    onChange({ ...value, items: next });
-                  }}
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="grid gap-2">
+        <label className="text-xs font-medium text-muted-foreground">Content</label>
+        <Textarea
+          className="min-h-[120px]"
+          value={value.content}
+          onChange={(e) => onChange({ ...value, content: e.target.value })}
+          placeholder="Enter your content here..."
+        />
       </div>
     </div>
   );
@@ -545,7 +309,7 @@ function ImageEditor({
       </div>
 
       {previewUrl ? (
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/20 shadow-[var(--warp-shadow-elev-1)]">
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
@@ -584,22 +348,16 @@ function ImageEditor({
           onValueChange={(layout) =>
             onChange({
               ...value,
-              layout: layout as "full" | "wide" | "half-left" | "half-right",
+              layout: layout as "full" | "wide",
             })
           }
         >
-          <TabsList className="h-9 shadow-[var(--warp-shadow-elev-1)]">
+          <TabsList className="h-9">
             <TabsTrigger value="full" className="text-xs">
               Full
             </TabsTrigger>
             <TabsTrigger value="wide" className="text-xs">
               Wide
-            </TabsTrigger>
-            <TabsTrigger value="half-left" className="text-xs">
-              Half L
-            </TabsTrigger>
-            <TabsTrigger value="half-right" className="text-xs">
-              Half R
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -616,7 +374,7 @@ function ImageEditor({
             })
           }
         >
-          <TabsList className="h-9 shadow-[var(--warp-shadow-elev-1)]">
+          <TabsList className="h-9">
             <TabsTrigger value="panel" className="text-xs">
               Panel
             </TabsTrigger>
@@ -662,15 +420,15 @@ function BlockEditorDialog({
   getPreviewUrl: (path: string | undefined) => string | null;
   onSetPreviewUrl: (path: string, url: string) => void;
 }) {
-  const [draft, setDraft] = React.useState<ContentBlock | null>(block);
+  const [editedBlock, setEditedBlock] = React.useState<ContentBlock | null>(block);
   const [validationError, setValidationError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    setDraft(block ? (JSON.parse(JSON.stringify(block)) as ContentBlock) : null);
+    setEditedBlock(block ? (JSON.parse(JSON.stringify(block)) as ContentBlock) : null);
     setValidationError(null);
   }, [block, open]);
 
-  if (!block || !draft) return null;
+  if (!block || !editedBlock) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -678,56 +436,51 @@ function BlockEditorDialog({
         <DialogHeader>
           <DialogTitle>Edit block</DialogTitle>
           <DialogDescription>
-            Update the content, then save to apply it to the section draft.
+            Update the content, then save to apply changes.
           </DialogDescription>
         </DialogHeader>
 
         <div className="mt-5 space-y-5">
           <div className="flex items-center gap-2">
-            <Badge variant="outline">{blockTypeLabel(draft.type)}</Badge>
+            <Badge variant="outline">{blockTypeLabel(editedBlock.type)}</Badge>
             <span className="text-xs text-muted-foreground">
-              {draft.type === "kpis"
-                ? `${draft.items.length} KPI rows`
-                : draft.type === "bullets"
-                  ? `${draft.items.length} bullets`
-                  : draft.type === "timeline"
-                    ? `${draft.items.length} timeline items`
-                    : draft.type === "image"
-                      ? draft.path
-                        ? "asset selected"
-                        : "no asset"
-                      : "empty"}
+              {editedBlock.type === "bullets"
+                ? `${editedBlock.items.length} bullets`
+                : editedBlock.type === "prose"
+                  ? `${editedBlock.content.length} chars`
+                  : editedBlock.type === "image"
+                    ? editedBlock.path
+                      ? "asset selected"
+                      : "no asset"
+                    : "empty"}
             </span>
           </div>
 
-          {draft.type === "kpis" ? (
-            <KpisEditor value={draft} onChange={(next) => setDraft(next)} />
+          {editedBlock.type === "bullets" ? (
+            <BulletsEditor value={editedBlock} onChange={(next) => setEditedBlock(next)} />
           ) : null}
-          {draft.type === "bullets" ? (
-            <BulletsEditor value={draft} onChange={(next) => setDraft(next)} />
+          {editedBlock.type === "prose" ? (
+            <ProseEditor value={editedBlock} onChange={(next) => setEditedBlock(next)} />
           ) : null}
-          {draft.type === "timeline" ? (
-            <TimelineEditor value={draft} onChange={(next) => setDraft(next)} />
-          ) : null}
-          {draft.type === "image" ? (
+          {editedBlock.type === "image" ? (
             <ImageEditor
-              value={draft}
-              onChange={(next) => setDraft(next)}
+              value={editedBlock}
+              onChange={(next) => setEditedBlock(next)}
               moduleSlug={moduleSlug}
               getPreviewUrl={getPreviewUrl}
               onSetPreviewUrl={onSetPreviewUrl}
             />
           ) : null}
-          {draft.type === "empty" ? (
+          {editedBlock.type === "empty" ? (
             <div className="space-y-4">
               <div className="grid gap-2">
                 <label className="text-xs font-medium text-muted-foreground">
                   Title
                 </label>
                 <Input
-                  value={draft.title}
+                  value={editedBlock.title}
                   onChange={(e) =>
-                    setDraft({ ...draft, title: e.target.value })
+                    setEditedBlock({ ...editedBlock, title: e.target.value })
                   }
                 />
               </div>
@@ -736,9 +489,9 @@ function BlockEditorDialog({
                   Description (optional)
                 </label>
                 <Input
-                  value={draft.description ?? ""}
+                  value={editedBlock.description ?? ""}
                   onChange={(e) =>
-                    setDraft({ ...draft, description: e.target.value })
+                    setEditedBlock({ ...editedBlock, description: e.target.value })
                   }
                 />
               </div>
@@ -761,18 +514,18 @@ function BlockEditorDialog({
           <Button
             type="button"
             onClick={() => {
-              if (draft.type === "image") {
-                if (!draft.alt.trim()) {
+              if (editedBlock.type === "image") {
+                if (!editedBlock.alt.trim()) {
                   setValidationError("Alt text is required for images.");
                   return;
                 }
-                if (!draft.assetId && !draft.path) {
+                if (!editedBlock.assetId && !editedBlock.path) {
                   setValidationError("Select an asset to attach to this block.");
                   return;
                 }
               }
               setValidationError(null);
-              onSave(draft);
+              onSave(editedBlock);
               onOpenChange(false);
             }}
           >
@@ -823,20 +576,13 @@ export function ContentStudio({
       for (const key of Object.keys(mod.sections)) {
         if (!isModuleSectionKey(key)) continue;
         const fallback = deepCloneBlocks(mod.sections[key].blocks);
-        const docs = sectionsByModule[mod.slug]?.[key] ?? {};
-        const draftDoc = docs.draft;
-        const publishedDoc = docs.published;
-        const draftBlocks = draftDoc?.blocks ? deepCloneBlocks(draftDoc.blocks) : fallback;
+        const doc = sectionsByModule[mod.slug]?.[key];
+        const blocks = doc?.blocks ? deepCloneBlocks(doc.blocks) : fallback;
         perSection[key] = {
-          draft: {
-            blocks: draftBlocks,
-            source: draftDoc?.blocks ? "db" : "seed",
-            updatedAt: draftDoc?.updatedAt,
-          },
-          published: {
-            blocks: publishedDoc?.blocks ? deepCloneBlocks(publishedDoc.blocks) : null,
-            publishedAt: publishedDoc?.publishedAt ?? null,
-            updatedAt: publishedDoc?.updatedAt,
+          content: {
+            blocks,
+            source: doc?.blocks ? "db" : "seed",
+            updatedAt: doc?.updatedAt,
           },
         };
       }
@@ -848,18 +594,11 @@ export function ContentStudio({
   const activeConfig = modules.find((m) => m.slug === activeModule) ?? null;
   const activeSectionState = state[activeModule]?.[activeSection] ?? null;
 
-  const currentDraftBlocks = activeSectionState?.draft.blocks ?? EMPTY_BLOCKS;
-  const publishedBlocks = activeSectionState?.published.blocks;
+  const currentBlocks = activeSectionState?.content.blocks ?? EMPTY_BLOCKS;
   const actionsDisabled = !dbAvailable || !auditAvailable || isPending;
   const editingDisabled = !dbAvailable || isPending;
 
-  const previewDraftBlocks = currentDraftBlocks.map((block) => {
-    if (block.type !== "image" || !block.path) return block;
-    const url = getPreviewUrl(block.path);
-    return url ? { ...block, url } : block;
-  });
-
-  const previewPublishedBlocks = (publishedBlocks ?? []).map((block) => {
+  const previewBlocks = currentBlocks.map((block) => {
     if (block.type !== "image" || !block.path) return block;
     const url = getPreviewUrl(block.path);
     return url ? { ...block, url } : block;
@@ -876,18 +615,14 @@ export function ContentStudio({
     forKey: string | null;
   }>({ loading: false, error: null, events: [], forKey: null });
 
-  const editingBlock =
-    editingIndex === null ? null : currentDraftBlocks[editingIndex] ?? null;
+  const editingBlock = editingIndex === null ? null : currentBlocks[editingIndex] ?? null;
 
   React.useEffect(() => {
     if (activeMode === "history") return;
 
     const paths = new Set<string>();
 
-    for (const block of currentDraftBlocks) {
-      if (block.type === "image" && block.path) paths.add(block.path);
-    }
-    for (const block of publishedBlocks ?? []) {
+    for (const block of currentBlocks) {
       if (block.type === "image" && block.path) paths.add(block.path);
     }
     if (editingBlock?.type === "image" && editingBlock.path) {
@@ -915,23 +650,22 @@ export function ContentStudio({
     };
   }, [
     activeMode,
-    currentDraftBlocks,
-    publishedBlocks,
+    currentBlocks,
     editingBlock,
     previewUrlByPath,
     supabaseBrowser,
     setPreviewUrl,
   ]);
 
-  const setDraftBlocks = React.useCallback(
+  const setContentBlocks = React.useCallback(
     (nextBlocks: ContentBlock[]) => {
       setState((prev) => {
         const next: StudioState = { ...prev };
         next[activeModule] = { ...next[activeModule] };
         next[activeModule][activeSection] = {
           ...next[activeModule][activeSection],
-          draft: {
-            ...next[activeModule][activeSection].draft,
+          content: {
+            ...next[activeModule][activeSection].content,
             blocks: nextBlocks,
           },
         };
@@ -941,27 +675,21 @@ export function ContentStudio({
     [activeModule, activeSection],
   );
 
-  function addBlock(type: "kpis" | "bullets" | "timeline" | "image") {
-    if (type === "kpis") {
-      setDraftBlocks([...currentDraftBlocks, newKpisBlock()]);
-      setNotice(null);
-      return;
-    }
-
+  function addBlock(type: "bullets" | "prose" | "image") {
     if (type === "bullets") {
-      setDraftBlocks([...currentDraftBlocks, newBulletsBlock()]);
+      setContentBlocks([...currentBlocks, newBulletsBlock()]);
       setNotice(null);
       return;
     }
 
-    if (type === "timeline") {
-      setDraftBlocks([...currentDraftBlocks, newTimelineBlock()]);
+    if (type === "prose") {
+      setContentBlocks([...currentBlocks, newProseBlock()]);
       setNotice(null);
       return;
     }
 
-    const next = [...currentDraftBlocks, newImageBlock()];
-    setDraftBlocks(next);
+    const next = [...currentBlocks, newImageBlock()];
+    setContentBlocks(next);
     setEditingIndex(next.length - 1);
     setNotice("Select an asset and confirm alt text before saving.");
   }
@@ -980,10 +708,10 @@ export function ContentStudio({
     [selectedHistoryKey],
   );
 
-  function saveDraft() {
+  function saveChanges() {
     startTransition(async () => {
       setNotice(null);
-      const result = await upsertDraft(activeModule, activeSection, currentDraftBlocks);
+      const result = await saveModuleSection(activeModule, activeSection, currentBlocks);
       if (!result.ok) {
         setNotice(result.error);
         return;
@@ -994,99 +722,22 @@ export function ContentStudio({
         next[activeModule] = { ...next[activeModule] };
         next[activeModule][activeSection] = {
           ...next[activeModule][activeSection],
-          draft: {
-            ...next[activeModule][activeSection].draft,
+          content: {
+            ...next[activeModule][activeSection].content,
             source: "db",
             updatedAt: result.updatedAt,
-            blocks: result.draftBlocks ? deepCloneBlocks(result.draftBlocks) : currentDraftBlocks,
+            blocks: result.blocks ? deepCloneBlocks(result.blocks) : currentBlocks,
           },
         };
         return next;
       });
 
       appendAuditEvent(result.audit);
-      setNotice("Draft saved.");
+      setNotice("Saved.");
     });
   }
 
-  function publishDraft() {
-    startTransition(async () => {
-      setNotice(null);
-
-      const saved = await upsertDraft(activeModule, activeSection, currentDraftBlocks);
-      if (!saved.ok) {
-        setNotice(saved.error);
-        return;
-      }
-
-      const published = await publishFromDraft(activeModule, activeSection);
-      if (!published.ok) {
-        setNotice(published.error);
-        return;
-      }
-
-      setState((prev) => {
-        const next: StudioState = { ...prev };
-        next[activeModule] = { ...next[activeModule] };
-        next[activeModule][activeSection] = {
-          ...next[activeModule][activeSection],
-          draft: {
-            ...next[activeModule][activeSection].draft,
-            source: "db",
-            updatedAt: saved.updatedAt,
-            blocks: saved.draftBlocks ? deepCloneBlocks(saved.draftBlocks) : currentDraftBlocks,
-          },
-          published: {
-            blocks: deepCloneBlocks(currentDraftBlocks),
-            publishedAt: published.publishedAt ?? null,
-            updatedAt: published.updatedAt,
-          },
-        };
-        return next;
-      });
-
-      appendAuditEvent(saved.audit);
-      appendAuditEvent(published.audit);
-      setNotice("Published.");
-    });
-  }
-
-  function copyPublishedIntoDraft() {
-    startTransition(async () => {
-      setNotice(null);
-      const result = await copyPublishedToDraft(activeModule, activeSection);
-      if (!result.ok) {
-        setNotice(result.error);
-        return;
-      }
-
-      if (!result.draftBlocks) {
-        setNotice("Nothing to copy.");
-        return;
-      }
-
-      setState((prev) => {
-        const next: StudioState = { ...prev };
-        next[activeModule] = { ...next[activeModule] };
-        next[activeModule][activeSection] = {
-          ...next[activeModule][activeSection],
-          draft: {
-            ...next[activeModule][activeSection].draft,
-            source: "db",
-            updatedAt: result.updatedAt,
-            blocks: deepCloneBlocks(result.draftBlocks ?? []),
-          },
-        };
-        return next;
-      });
-
-      appendAuditEvent(result.audit);
-      setActiveMode("edit");
-      setNotice("Copied published content into draft.");
-    });
-  }
-
-  function restoreDraftFromAudit(auditId: string) {
+  function restoreContentFromAudit(auditId: string) {
     startTransition(async () => {
       setNotice(null);
       const result = await restoreFromAudit(auditId);
@@ -1095,8 +746,8 @@ export function ContentStudio({
         return;
       }
 
-      if (!result.draftBlocks) {
-        setNotice("Restore succeeded but no draft blocks were returned.");
+      if (!result.blocks) {
+        setNotice("Restore succeeded but no blocks were returned.");
         return;
       }
 
@@ -1106,11 +757,11 @@ export function ContentStudio({
         next[moduleSlug] = { ...next[moduleSlug] };
         next[moduleSlug][activeSection] = {
           ...next[moduleSlug][activeSection],
-          draft: {
-            ...next[moduleSlug][activeSection].draft,
+          content: {
+            ...next[moduleSlug][activeSection].content,
             source: "db",
             updatedAt: result.updatedAt,
-            blocks: deepCloneBlocks(result.draftBlocks ?? []),
+            blocks: deepCloneBlocks(result.blocks ?? []),
           },
         };
         return next;
@@ -1118,7 +769,7 @@ export function ContentStudio({
 
       appendAuditEvent(result.audit);
       setActiveMode("edit");
-      setNotice("Draft restored.");
+      setNotice("Saved.");
     });
   }
 
@@ -1171,7 +822,7 @@ export function ContentStudio({
             Content Studio
           </h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Edit module section blocks (draft/published) without redeploys.
+            Edit module section blocks without redeploys. Changes are saved immediately.
           </p>
         </div>
 
@@ -1223,7 +874,7 @@ export function ContentStudio({
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <section className="rounded-[var(--warp-radius-xl)] border border-border bg-background/18 shadow-[var(--warp-shadow-elev-2)] backdrop-blur">
+        <section className="rounded-[var(--warp-radius-xl)] border border-border bg-background/18 backdrop-blur">
           <header className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div>
               <div className="text-sm font-semibold text-foreground">Modules</div>
@@ -1255,7 +906,7 @@ export function ContentStudio({
                       "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       active
-                        ? "bg-muted/55 text-foreground shadow-[var(--warp-shadow-elev-1)]"
+                        ? "bg-muted/55 text-foreground"
                         : "text-muted-foreground hover:bg-muted/35 hover:text-foreground",
                     )}
                   >
@@ -1285,7 +936,7 @@ export function ContentStudio({
 
         <section className="space-y-4">
           {activeConfig ? (
-            <div className="rounded-[var(--warp-radius-xl)] border border-border bg-background/18 shadow-[var(--warp-shadow-elev-2)] backdrop-blur">
+            <div className="rounded-[var(--warp-radius-xl)] border border-border bg-background/18 backdrop-blur">
               <header className="border-b border-border/60 px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -1318,7 +969,7 @@ export function ContentStudio({
                 >
                   <div className="space-y-3">
                     <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                      <TabsList className="shadow-[var(--warp-shadow-elev-1)]">
+                      <TabsList>
                         <TabsTrigger value="end-vision">End vision</TabsTrigger>
                         <TabsTrigger value="progress">Progress</TabsTrigger>
                         <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
@@ -1338,14 +989,11 @@ export function ContentStudio({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => addBlock("kpis")}>
-                                Add KPI strip
-                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => addBlock("bullets")}>
                                 Add Bullets
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => addBlock("timeline")}>
-                                Add Timeline
+                              <DropdownMenuItem onClick={() => addBlock("prose")}>
+                                Add Prose
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => addBlock("image")}>
                                 Add Image / Diagram
@@ -1354,38 +1002,15 @@ export function ContentStudio({
                           </DropdownMenu>
                         ) : null}
 
-                        {activeMode === "compare" ? (
+                        {activeMode === "edit" ? (
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            disabled={actionsDisabled || !publishedBlocks}
-                            onClick={copyPublishedIntoDraft}
+                            disabled={actionsDisabled}
+                            onClick={saveChanges}
                           >
-                            Copy Published → Draft
+                            {isPending ? "Saving…" : "Save changes"}
                           </Button>
-                        ) : null}
-
-                        {activeMode !== "history" ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              disabled={actionsDisabled}
-                              onClick={saveDraft}
-                            >
-                              {isPending ? "Saving…" : "Save draft"}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={actionsDisabled}
-                              onClick={publishDraft}
-                            >
-                              {isPending ? "Publishing…" : "Publish"}
-                            </Button>
-                          </>
                         ) : null}
                       </div>
                     </div>
@@ -1394,20 +1019,15 @@ export function ContentStudio({
                       <Tabs
                         value={activeMode}
                         onValueChange={(v) => {
-                          setActiveMode(
-                            v === "compare" ? "compare" : v === "history" ? "history" : "edit",
-                          );
+                          setActiveMode(v === "history" ? "history" : "edit");
                           setNotice(null);
                           setEditingIndex(null);
                           setRestoreTarget(null);
                         }}
                       >
-                        <TabsList className="h-9 shadow-[var(--warp-shadow-elev-1)]">
+                        <TabsList className="h-9">
                           <TabsTrigger value="edit" className="text-xs">
                             Edit
-                          </TabsTrigger>
-                          <TabsTrigger value="compare" className="text-xs">
-                            Compare
                           </TabsTrigger>
                           <TabsTrigger value="history" className="text-xs">
                             History
@@ -1418,33 +1038,19 @@ export function ContentStudio({
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <Badge
                           variant={
-                            activeSectionState?.draft.source === "db"
+                            activeSectionState?.content.source === "db"
                               ? "outline"
                               : "muted"
                           }
                           className="px-2 py-0.5 text-[11px]"
                         >
-                          {activeSectionState?.draft.source === "db"
-                            ? "Draft saved"
-                            : "Draft seeded"}
+                          {activeSectionState?.content.source === "db"
+                            ? "Saved"
+                            : "Not saved"}
                         </Badge>
-                        {activeSectionState?.draft.updatedAt ? (
+                        {activeSectionState?.content.updatedAt ? (
                           <span className="font-mono">
-                            {new Date(activeSectionState.draft.updatedAt).toLocaleString()}
-                          </span>
-                        ) : null}
-
-                        <span className="opacity-50">•</span>
-
-                        <Badge
-                          variant={publishedBlocks ? "outline" : "muted"}
-                          className="px-2 py-0.5 text-[11px]"
-                        >
-                          {publishedBlocks ? "Published" : "Not published"}
-                        </Badge>
-                        {activeSectionState?.published.publishedAt ? (
-                          <span className="font-mono">
-                            {new Date(activeSectionState.published.publishedAt).toLocaleString()}
+                            {new Date(activeSectionState.content.updatedAt).toLocaleString()}
                           </span>
                         ) : null}
                       </div>
@@ -1464,11 +1070,11 @@ export function ContentStudio({
           {activeMode === "edit" ? (
             <div className="space-y-4">
               <div className="text-xs text-muted-foreground">
-                Draft blocks render using the same components as module pages.
+                Content renders using the same components as module pages.
               </div>
 
               <div className="space-y-4">
-                {currentDraftBlocks.map((block, idx) => (
+                {currentBlocks.map((block, idx) => (
                   <div key={`${block.type}-${idx}`} className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
@@ -1497,8 +1103,8 @@ export function ContentStudio({
                           disabled={editingDisabled}
                           onClick={() => {
                             if (!confirm("Delete this block?")) return;
-                            const next = currentDraftBlocks.filter((_, i) => i !== idx);
-                            setDraftBlocks(next);
+                            const next = currentBlocks.filter((_, i) => i !== idx);
+                            setContentBlocks(next);
                             setNotice(null);
                           }}
                         >
@@ -1507,7 +1113,7 @@ export function ContentStudio({
                       </div>
                     </div>
 
-                    <BlockPreview block={previewDraftBlocks[idx] ?? block} />
+                    <BlockPreview block={previewBlocks[idx] ?? block} />
                   </div>
                 ))}
               </div>
@@ -1523,72 +1129,12 @@ export function ContentStudio({
                 onSetPreviewUrl={setPreviewUrl}
                 onSave={(next) => {
                   if (editingIndex === null) return;
-                  const blocks = [...currentDraftBlocks];
+                  const blocks = [...currentBlocks];
                   blocks[editingIndex] = next;
-                  setDraftBlocks(blocks);
+                  setContentBlocks(blocks);
                   setNotice(null);
                 }}
               />
-            </div>
-          ) : null}
-
-          {activeMode === "compare" ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <ContentPanel
-                  title="Draft preview"
-                  description={
-                    activeSectionState?.draft.updatedAt
-                      ? `Updated ${new Date(activeSectionState.draft.updatedAt).toLocaleString()}`
-                      : "Not saved yet"
-                  }
-                  right={
-                    <Badge
-                      variant={
-                        activeSectionState?.draft.source === "db"
-                          ? "outline"
-                          : "muted"
-                      }
-                      className="px-2 py-0.5 text-[11px]"
-                    >
-                      Draft
-                    </Badge>
-                  }
-                >
-                  <div className="min-h-[320px] max-h-[calc(100vh-560px)] overflow-auto pr-2">
-                    <Blocks blocks={previewDraftBlocks} showImageHints />
-                  </div>
-                </ContentPanel>
-
-                <ContentPanel
-                  title="Published preview"
-                  description={
-                    publishedBlocks
-                      ? activeSectionState?.published.publishedAt
-                        ? `Published ${new Date(activeSectionState.published.publishedAt).toLocaleString()}`
-                        : "Published (timestamp missing)"
-                      : "No published content yet"
-                  }
-                  right={
-                    <Badge
-                      variant={publishedBlocks ? "outline" : "muted"}
-                      className="px-2 py-0.5 text-[11px]"
-                    >
-                      Published
-                    </Badge>
-                  }
-                >
-                  <div className="min-h-[320px] max-h-[calc(100vh-560px)] overflow-auto pr-2">
-                    {publishedBlocks ? (
-                      <Blocks blocks={previewPublishedBlocks} showImageHints />
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        Users will see config placeholders until you publish.
-                      </div>
-                    )}
-                  </div>
-                </ContentPanel>
-              </div>
             </div>
           ) : null}
 
@@ -1631,12 +1177,6 @@ export function ContentStudio({
                           >
                             {auditActionLabel(event.action)}
                           </Badge>
-                          <Badge
-                            variant="outline"
-                            className="px-2 py-0.5 text-[11px]"
-                          >
-                            {event.status}
-                          </Badge>
                           <span
                             className="text-xs text-muted-foreground"
                             title={new Date(event.createdAt).toLocaleString()}
@@ -1659,7 +1199,7 @@ export function ContentStudio({
                           disabled={actionsDisabled}
                           onClick={() => setRestoreTarget(event)}
                         >
-                          Restore to Draft
+                          Restore
                         </Button>
                       </div>
                     </li>
@@ -1681,9 +1221,9 @@ export function ContentStudio({
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Restore this snapshot to Draft?</DialogTitle>
+                <DialogTitle>Restore this snapshot?</DialogTitle>
                 <DialogDescription>
-                  This overwrites the current draft for this section. You can publish after reviewing.
+                  This overwrites the current content for this section. The change takes effect immediately.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1695,9 +1235,6 @@ export function ContentStudio({
                       className="px-2 py-0.5 text-[11px]"
                     >
                       {auditActionLabel(restoreTarget.action)}
-                    </Badge>
-                    <Badge variant="outline" className="px-2 py-0.5 text-[11px]">
-                      {restoreTarget.status}
                     </Badge>
                     <span className="font-mono">
                       {new Date(restoreTarget.createdAt).toLocaleString()}
@@ -1722,10 +1259,10 @@ export function ContentStudio({
                     if (!restoreTarget) return;
                     const id = restoreTarget.id;
                     setRestoreTarget(null);
-                    restoreDraftFromAudit(id);
+                    restoreContentFromAudit(id);
                   }}
                 >
-                  Restore to draft
+                  Restore
                 </Button>
               </DialogFooter>
             </DialogContent>

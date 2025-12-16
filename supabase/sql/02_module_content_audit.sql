@@ -1,5 +1,5 @@
 -- Warp x DoorDash: Network of the Future Portal (V1)
--- Module content audit log (draft/published snapshots) for admin-only review + restore.
+-- Module content audit log (immutable snapshots) for admin-only review + restore.
 
 create extension if not exists "pgcrypto" with schema extensions;
 
@@ -7,7 +7,6 @@ create table if not exists public.module_section_audit (
   id uuid primary key default gen_random_uuid(),
   module_slug text not null,
   section_key text not null,
-  status text not null,
   action text not null,
   blocks jsonb not null,
   actor_id uuid references auth.users(id) on delete set null,
@@ -16,11 +15,8 @@ create table if not exists public.module_section_audit (
   constraint module_section_audit_section_key_check check (
     section_key in ('end-vision', 'progress', 'roadmap')
   ),
-  constraint module_section_audit_status_check check (
-    status in ('draft', 'published')
-  ),
   constraint module_section_audit_action_check check (
-    action in ('save_draft', 'publish', 'restore')
+    action in ('module_content_updated')
   )
 );
 

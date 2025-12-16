@@ -11,6 +11,23 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { IconGrid, IconShield, IconStack, IconUser } from "@/components/icons";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import {
+  Building2,
+  Package,
+  RefreshCw,
+  Route,
+  RotateCcw,
+  ShoppingBag,
+} from "lucide-react";
+
+const MODULE_ICON_BY_SLUG = {
+  "big-and-bulky": Package,
+  sfs: ShoppingBag,
+  "middle-mile-to-spokes": Route,
+  "first-mile-to-hubs-or-spokes": Building2,
+  returns: RotateCcw,
+  "store-replenishments": RefreshCw,
+} as const;
 
 function SidebarItem({
   href,
@@ -30,7 +47,7 @@ function SidebarItem({
         "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active
-          ? "bg-muted/55 text-foreground shadow-[var(--shadow-elev-1)]"
+          ? "bg-muted/55 text-foreground"
           : "text-muted-foreground hover:bg-muted/35 hover:text-foreground",
       )}
     >
@@ -60,7 +77,7 @@ export function SidebarNav({
   const pathname = usePathname();
 
   return (
-    <aside className="flex flex-col gap-4 border-r border-border bg-background/28 p-4 backdrop-blur">
+    <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto border-r border-border bg-background/28 p-4 backdrop-blur">
       <div className="px-1 pt-1">
         <BrandLogo size="sm" href="/" className="-ml-2" />
         <div className="px-2 pt-1 text-xs text-muted-foreground">
@@ -83,15 +100,24 @@ export function SidebarNav({
             Modules
           </div>
           <div className="space-y-1">
-            {modules.map((m) => (
-              <SidebarItem
-                key={m.slug}
-                href={`/m/${m.slug}`}
-                label={m.title}
-                icon={<IconStack className="h-4 w-4" />}
-                active={pathname.startsWith(`/m/${m.slug}`)}
-              />
-            ))}
+            {modules.map((m) => {
+              const Icon = MODULE_ICON_BY_SLUG[m.slug as keyof typeof MODULE_ICON_BY_SLUG];
+              return (
+                <SidebarItem
+                  key={m.slug}
+                  href={`/m/${m.slug}`}
+                  label={m.title}
+                  icon={
+                    Icon ? (
+                      <Icon className="h-4 w-4" strokeWidth={1.75} />
+                    ) : (
+                      <IconStack className="h-4 w-4" />
+                    )
+                  }
+                  active={pathname.startsWith(`/m/${m.slug}`)}
+                />
+              );
+            })}
           </div>
         </div>
 

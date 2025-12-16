@@ -107,12 +107,12 @@ with check (
 do $$
 begin
   if to_regclass('public.module_sections') is not null then
-    drop policy if exists "Published module sections are readable" on public.module_sections;
-    create policy "Published module sections are readable"
+    drop policy if exists "Module sections are readable" on public.module_sections;
+    create policy "Module sections are readable"
     on public.module_sections
     for select
     to authenticated
-    using (status = 'published' and public.is_portal_member());
+    using (public.is_portal_member());
   end if;
 
   if to_regclass('public.assets') is not null then

@@ -1,7 +1,6 @@
 import { ContentPanel } from "@/components/panels/ContentPanel";
 import { Badge } from "@/components/ui/badge";
 import type { AdminDiagnostics, DiagnosticCheck, DiagnosticStatus } from "@/lib/diagnostics/admin";
-import { KpiStrip } from "@/components/blocks/KpiStrip";
 import { CopyButton } from "@/components/account/CopyButton";
 import { SetupOps } from "@/components/admin/setup-ops";
 import { PORTAL_ASSETS_BUCKET } from "@/lib/assets/constants";
@@ -120,7 +119,7 @@ function CheckCard({ check }: { check: DiagnosticCheck }) {
   );
 }
 
-export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics }) {
+function StatusSummary({ diagnostics }: { diagnostics: AdminDiagnostics }) {
   const items = [
     { label: "PASS", value: String(diagnostics.stats.pass) },
     { label: "WARN", value: String(diagnostics.stats.warn) },
@@ -135,8 +134,23 @@ export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics 
   ];
 
   return (
+    <ContentPanel title="System status">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {items.map((item) => (
+          <div key={item.label} className="text-center">
+            <div className="text-2xl font-semibold text-foreground">{item.value}</div>
+            <div className="text-xs text-muted-foreground">{item.label}</div>
+          </div>
+        ))}
+      </div>
+    </ContentPanel>
+  );
+}
+
+export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics }) {
+  return (
     <div className="space-y-4">
-      <KpiStrip title="System status" items={items} />
+      <StatusSummary diagnostics={diagnostics} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
@@ -147,15 +161,15 @@ export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics 
         </span>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="px-2 py-0.5 text-[11px]">
-            Published sections:{" "}
+            Module sections:{" "}
             <span className="ml-1 font-mono">
-              {diagnostics.counts?.publishedSections ?? "—"}
+              {diagnostics.counts?.moduleSections ?? "—"}
             </span>
           </Badge>
           <Badge variant="outline" className="px-2 py-0.5 text-[11px]">
-            Draft sections:{" "}
+            Module audit:{" "}
             <span className="ml-1 font-mono">
-              {diagnostics.counts?.draftSections ?? "—"}
+              {diagnostics.counts?.auditEvents ?? "—"}
             </span>
           </Badge>
         </div>
@@ -173,4 +187,3 @@ export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics 
     </div>
   );
 }
-

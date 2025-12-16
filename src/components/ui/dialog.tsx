@@ -35,7 +35,7 @@ export const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2",
-        "rounded-[var(--warp-radius-xl)] border border-border bg-card shadow-[var(--warp-shadow-elev-4)]",
+        "rounded-[var(--warp-radius-xl)] border border-border bg-card shadow-[var(--shadow-elev-3)]",
         "max-h-[calc(100vh-4rem)] overflow-auto p-6",
         className,
       )}

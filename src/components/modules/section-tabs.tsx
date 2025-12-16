@@ -20,7 +20,7 @@ export function SectionTabs({ value }: { value: ModuleSectionKey }) {
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
       }}
     >
-      <TabsList className="shadow-[var(--warp-shadow-elev-1)]">
+      <TabsList>
         {MODULE_SECTIONS.map((s) => (
           <TabsTrigger key={s.key} value={s.key}>
             {s.label}

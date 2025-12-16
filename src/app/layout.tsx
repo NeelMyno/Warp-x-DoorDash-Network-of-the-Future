@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AppBackground } from "@/components/shell/AppBackground";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
@@ -58,10 +59,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <body
         className={`${fontUi.variable} ${fontCode.variable} min-h-full antialiased`}
+        suppressHydrationWarning
       >
+        <AppBackground />
         {children}
       </body>
     </html>

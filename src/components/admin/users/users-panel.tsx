@@ -273,7 +273,7 @@ function InviteUserDialog({
           <div className="grid gap-2">
             <div className="text-sm font-medium text-foreground">Role</div>
             <Tabs value={role} onValueChange={(v) => setRole(v === "admin" ? "admin" : "user")}>
-              <TabsList className="h-9 shadow-[var(--warp-shadow-elev-1)]">
+              <TabsList className="h-9">
                 <TabsTrigger value="user" className="text-xs">
                   User
                 </TabsTrigger>
@@ -1328,7 +1328,7 @@ export function UsersPanel({
       {toast ? (
         <div
           className={cn(
-            "fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border px-4 py-3 text-sm shadow-[var(--warp-shadow-elev-2)] backdrop-blur",
+            "fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border px-4 py-3 text-sm backdrop-blur",
             toast.type === "ok"
               ? "border-primary/25 bg-primary/10 text-foreground"
               : "border-destructive/30 bg-destructive/10 text-foreground",
@@ -1347,7 +1347,7 @@ export function UsersPanel({
             setView(next === "activity" ? "activity" : "directory")
           }
         >
-          <TabsList className="h-9 shadow-[var(--warp-shadow-elev-1)]">
+          <TabsList className="h-9">
             <TabsTrigger value="directory" className="text-xs">
               Directory
             </TabsTrigger>

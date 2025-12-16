@@ -21,7 +21,7 @@ export default async function LoginPage({
     <PageShell className="grid place-items-center">
       <div className="mx-auto w-full max-w-md">
         {reason === "invalid-link" ? (
-          <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+          <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4">
             <div className="text-sm font-semibold text-foreground">
               Link invalid or expired
             </div>
@@ -32,7 +32,7 @@ export default async function LoginPage({
         ) : null}
 
         {reason === "disabled" ? (
-          <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+          <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4">
             <div className="text-sm font-semibold text-foreground">
               Access disabled
             </div>

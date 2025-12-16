@@ -26,7 +26,7 @@ export function AppShell({
         <div
           className={cn(
             "grid min-h-[calc(100vh-3rem)] grid-cols-[260px_1fr] overflow-hidden",
-            "rounded-[var(--warp-radius-lg)] border border-border bg-background/25 shadow-[var(--shadow-elev-2)] backdrop-blur",
+            "rounded-[var(--warp-radius-lg)] border border-border bg-background/25 backdrop-blur",
           )}
         >
           <Sidebar role={role} modules={modules} />

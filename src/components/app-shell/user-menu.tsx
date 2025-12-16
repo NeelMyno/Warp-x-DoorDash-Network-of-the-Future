@@ -51,7 +51,7 @@ export function UserMenu({
         <button
           type="button"
           className={cn(
-            "group inline-flex items-center gap-3 rounded-xl border border-border bg-background/35 px-3 py-2 text-left shadow-[var(--shadow-elev-1)] backdrop-blur transition-colors",
+            "group inline-flex items-center gap-3 rounded-xl border border-border bg-background/35 px-3 py-2 text-left backdrop-blur transition-colors",
             "hover:bg-background/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
         >

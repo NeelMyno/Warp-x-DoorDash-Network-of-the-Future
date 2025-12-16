@@ -4,12 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { MODULES, MODULE_SECTIONS, type ModuleSectionKey } from "@/config/modules";
-import {
-  diagnosticsPublishDraft,
-  diagnosticsSeedDraft,
-} from "@/app/(authed)/admin/actions";
+import { diagnosticsSeedContent } from "@/app/(authed)/admin/actions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ContentPanel } from "@/components/panels/ContentPanel";
 import { cn } from "@/lib/utils";
 
@@ -18,13 +14,12 @@ export function SetupOps({ className }: { className?: string }) {
   const [moduleSlug, setModuleSlug] = React.useState(MODULES[0]?.slug ?? "big-and-bulky");
   const [sectionKey, setSectionKey] = React.useState<ModuleSectionKey>("end-vision");
   const [notice, setNotice] = React.useState<string | null>(null);
-  const [confirmPublish, setConfirmPublish] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
   return (
     <ContentPanel
       title="Dev / Ops helpers (optional)"
-      description="Non-destructive helpers to validate draft → publish → audit flows. These will not overwrite existing draft/published content."
+      description="Non-destructive helpers to validate content save + audit history. These will not overwrite existing content."
       className={cn(className)}
     >
       <div className="space-y-4">
@@ -79,7 +74,7 @@ export function SetupOps({ className }: { className?: string }) {
             onClick={() => {
               setNotice(null);
               startTransition(async () => {
-                const result = await diagnosticsSeedDraft(moduleSlug, sectionKey);
+                const result = await diagnosticsSeedContent(moduleSlug, sectionKey);
                 if (!result.ok) {
                   setNotice(result.error);
                   return;
@@ -89,16 +84,7 @@ export function SetupOps({ className }: { className?: string }) {
               });
             }}
           >
-            {isPending ? "Working…" : "Create sample draft (if missing)"}
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            disabled={isPending}
-            onClick={() => setConfirmPublish(true)}
-          >
-            Publish sample (if unpublished)
+            {isPending ? "Working…" : "Create sample content (if missing)"}
           </Button>
         </div>
 
@@ -108,50 +94,7 @@ export function SetupOps({ className }: { className?: string }) {
           </div>
         ) : null}
 
-        <Dialog open={confirmPublish} onOpenChange={setConfirmPublish}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Publish sample content?</DialogTitle>
-              <DialogDescription>
-                This will publish content for{" "}
-                <span className="font-mono text-foreground">
-                  {moduleSlug} / {sectionKey}
-                </span>{" "}
-                only if there is no published row yet.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setConfirmPublish(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  setConfirmPublish(false);
-                  setNotice(null);
-                  startTransition(async () => {
-                    const result = await diagnosticsPublishDraft(moduleSlug, sectionKey);
-                    if (!result.ok) {
-                      setNotice(result.error);
-                      return;
-                    }
-                    setNotice(result.message);
-                    router.refresh();
-                  });
-                }}
-              >
-                Publish
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </ContentPanel>
   );
 }
-

@@ -45,7 +45,7 @@ export default async function AccountPage({
       </div>
 
       {reason === "not-admin" ? (
-        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4">
           <div className="text-sm font-semibold text-foreground">
             Admin access required
           </div>
@@ -57,7 +57,7 @@ export default async function AccountPage({
       ) : null}
 
       {pw === "updated" ? (
-        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 shadow-[var(--warp-shadow-elev-1)]">
+        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4">
           <div className="text-sm font-semibold text-foreground">
             Password updated successfully
           </div>

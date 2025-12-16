@@ -168,17 +168,15 @@ export default async function AdminPage({
   type Row = {
     module_slug: string;
     section_key: ModuleSectionKey;
-    status: "draft" | "published";
     blocks: unknown;
     updated_at: string;
-    published_at: string | null;
   };
   let rows: Row[] = [];
 
   try {
     const { data, error } = await supabase
       .from("module_sections")
-      .select("module_slug, section_key, status, blocks, updated_at, published_at")
+      .select("module_slug, section_key, blocks, updated_at")
       .in("module_slug", moduleSlugs);
 
     if (error) {
@@ -214,24 +212,16 @@ export default async function AdminPage({
   type SectionDoc = {
     blocks: ContentBlock[] | null;
     updatedAt?: string;
-    publishedAt?: string | null;
   };
 
-  const sectionsByModule: Record<
-    string,
-    Partial<Record<ModuleSectionKey, Partial<Record<"draft" | "published", SectionDoc>>>>
-  > = {};
+  const sectionsByModule: Record<string, Partial<Record<ModuleSectionKey, SectionDoc>>> = {};
 
   for (const row of rows) {
     const parsed = parseBlocksJson(row.blocks);
     if (!sectionsByModule[row.module_slug]) sectionsByModule[row.module_slug] = {};
-    if (!sectionsByModule[row.module_slug][row.section_key]) {
-      sectionsByModule[row.module_slug][row.section_key] = {};
-    }
-    sectionsByModule[row.module_slug][row.section_key]![row.status] = {
+    sectionsByModule[row.module_slug][row.section_key] = {
       blocks: parsed,
       updatedAt: row.updated_at,
-      publishedAt: row.published_at,
     };
   }
 
@@ -243,7 +233,7 @@ export default async function AdminPage({
             Admin
           </h2>
           <p className="text-sm text-muted-foreground">
-            Content Studio for editing module sections and publishing updates.
+            Content Studio for editing module sections. Changes are saved immediately.
           </p>
         </div>
         <AdminTabs value={activeTab} />

@@ -383,7 +383,7 @@ export function AssetPickerDialog({
                             "group rounded-2xl border p-2 text-left transition",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                             active
-                              ? "border-primary/30 bg-primary/5 shadow-[var(--warp-shadow-elev-2)]"
+                              ? "border-primary/30 bg-primary/5"
                               : "border-border bg-background/15 hover:border-[color:var(--warp-border-hover)] hover:bg-background/25",
                           )}
                         >

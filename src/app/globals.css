@@ -34,6 +34,8 @@
   --radius: var(--warp-radius-md);
   --shadow-elev-1: var(--warp-shadow-elev-1);
   --shadow-elev-2: var(--warp-shadow-elev-2);
+  --shadow-elev-3: var(--warp-shadow-elev-3);
+  --shadow-elev-4: var(--warp-shadow-elev-4);
 }
 
 @theme inline {
@@ -69,7 +71,7 @@ html {
 
 body {
   min-height: 100vh;
-  background: var(--warp-bg-gradient);
+  background: var(--warp-bg);
   color: var(--foreground);
   font-family: var(--font-sans);
   font-size: var(--warp-fs-body);

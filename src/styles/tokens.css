@@ -1,3 +1,29 @@
+/**
+ * Warp design tokens — single source of truth for the visual language.
+ *
+ * STYLE GUIDELINES (to prevent regression):
+ *
+ * Surfaces:
+ * - Use borders as primary separators, NOT shadows
+ * - Cards/panels: border-border + bg-card (no shadow)
+ * - Glass effect: bg-background/XX + backdrop-blur (subtle opacity only)
+ *
+ * Shadows (floating layers ONLY):
+ * - --warp-shadow-elev-1: none (default - no shadow)
+ * - --warp-shadow-elev-2: dropdowns, popovers (light elevation)
+ * - --warp-shadow-elev-3: dialogs, modals (medium elevation)
+ * - --warp-shadow-elev-4: reserved for critical overlays
+ *
+ * Gradients:
+ * - --warp-bg-gradient: page background only (already muted)
+ * - Avoid bg-gradient-* or inline gradients in components
+ *
+ * BANNED in components:
+ * - Heavy shadows (blur > 16px, opacity > 0.3)
+ * - Neon edges or green aura glows
+ * - Multi-layer shadow stacks
+ * - Strong radial gradients behind cards
+ */
 :root {
   /* Warp palette */
   --warp-green-1: #e3ffea;
@@ -43,32 +69,39 @@
   --warp-accent-ink: #071109;
   --warp-ring: rgba(0, 255, 51, 0.62);
 
-  --warp-shadow-elev-1: 0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 10px 26px rgba(0, 0, 0, 0.55);
-  --warp-shadow-elev-2: 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 18px 55px rgba(0, 0, 0, 0.72);
-  --warp-shadow-elev-3: 0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 26px 90px rgba(0, 0, 0, 0.78);
-  --warp-glow-accent: 0 0 0 1px rgba(0, 255, 51, 0.22),
-    0 0 0 8px rgba(0, 255, 51, 0.08);
+  /* Muted shadows — rely on borders for separation, minimal drop shadow */
+  --warp-shadow-elev-1: none;
+  --warp-shadow-elev-2: 0 2px 8px rgba(0, 0, 0, 0.18);
+  --warp-shadow-elev-3: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --warp-shadow-elev-4: 0 8px 32px rgba(0, 0, 0, 0.28);
+  --warp-glow-accent: 0 0 0 1px rgba(0, 255, 51, 0.15);
 
+  /* Muted background gradient — very subtle green wash, calmer vignette */
   --warp-bg-gradient: radial-gradient(
       1000px 720px at 18% -12%,
-      rgba(0, 255, 51, 0.12),
+      rgba(0, 255, 51, 0.04),
       transparent 60%
     ),
     radial-gradient(
       900px 720px at 92% 6%,
-      rgba(0, 255, 51, 0.06),
+      rgba(0, 255, 51, 0.02),
       transparent 56%
     ),
     radial-gradient(
       1200px 900px at 50% 120%,
-      rgba(0, 0, 0, 0.75),
+      rgba(0, 0, 0, 0.35),
       transparent 56%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 46%),
     var(--warp-bg);
+
+  /* Accent bar: near-solid with barely perceptible gradient */
+  --warp-accent-bar: linear-gradient(
+    90deg,
+    rgba(0, 255, 51, 0.85),
+    rgba(0, 255, 51, 0.90)
+  );
+  --warp-accent-bar-muted: rgba(0, 255, 51, 0.12);
 
   /* Radii */
   --warp-radius-xl: 24px;

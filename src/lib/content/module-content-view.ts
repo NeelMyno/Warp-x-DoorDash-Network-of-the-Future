@@ -1,8 +1,11 @@
-export type ModuleContentView = "published" | "draft";
+/**
+ * Module content view type.
+ * After draft removal, only "published" view exists.
+ * Keeping this type for backwards compatibility with URL params.
+ */
+export type ModuleContentView = "published";
 
-export function isModuleContentView(
-  value: string | undefined,
-): value is ModuleContentView {
-  return value === "published" || value === "draft";
+export function isModuleContentView(value: unknown): value is ModuleContentView {
+  return value === "published";
 }
 

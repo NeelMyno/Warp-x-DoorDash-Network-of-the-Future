@@ -21,18 +21,20 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <PageShell>
+    <PageShell className="h-dvh min-h-0 overflow-hidden">
       <div
         className={cn(
-          "grid min-h-[calc(100vh_-_var(--warp-shell-pad)_*_2)] grid-cols-[268px_1fr] overflow-hidden",
-          "rounded-[var(--warp-radius-xl)] border border-border bg-background/18 shadow-[var(--warp-shadow-elev-3)] backdrop-blur",
+          "grid h-[calc(100dvh_-_var(--warp-shell-pad)_*_2)] min-h-0 grid-cols-[268px_1fr] overflow-hidden",
+          "rounded-[var(--warp-radius-xl)] border border-border bg-background/18 backdrop-blur",
         )}
       >
         <SidebarNav role={role} modules={modules} />
 
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-col">
           <AppHeader userEmail={userEmail} userFullName={userFullName} role={role} />
-          <main className="flex-1 px-6 py-5">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            {children}
+          </main>
         </div>
       </div>
     </PageShell>
