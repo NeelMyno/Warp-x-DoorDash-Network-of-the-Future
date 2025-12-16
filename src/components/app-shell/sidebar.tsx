@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import type { ModuleConfig } from "@/config/modules";
+import type { ModuleRegistryEntry } from "@/lib/modules/registry";
 import type { UserRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,7 @@ export function Sidebar({
   modules,
 }: {
   role: UserRole;
-  modules: ModuleConfig[];
+  modules: ModuleRegistryEntry[];
 }) {
   const pathname = usePathname();
   const isPortalActive = pathname === "/";
@@ -84,7 +84,7 @@ export function Sidebar({
               <NavLink
                 key={m.slug}
                 href={`/m/${m.slug}`}
-                label={m.title}
+                label={m.name}
                 icon={<IconStack className="h-4 w-4" />}
                 active={pathname.startsWith(`/m/${m.slug}`)}
               />

@@ -11,13 +11,19 @@ export function BulletBlock({
   description?: string;
   items: string[];
 }) {
-  // If no title/description, render bullets directly without panel wrapper
+  // Premium bullet list: intentional spacing, readable contrast
   const bulletList = (
-    <ul className="space-y-2 text-sm text-muted-foreground">
+    <ul className="space-y-2.5">
       {items.map((item, idx) => (
-        <li key={idx} className="flex gap-3">
-          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" />
-          <span className="min-w-0">{item}</span>
+        <li key={idx} className="flex items-start gap-3">
+          {/* Small dot marker aligned with first line of text */}
+          <span
+            className="mt-[8px] h-[5px] w-[5px] shrink-0 rounded-full bg-primary/50"
+            aria-hidden="true"
+          />
+          <span className="min-w-0 text-[14px] leading-[1.7] text-foreground/80">
+            {item}
+          </span>
         </li>
       ))}
     </ul>

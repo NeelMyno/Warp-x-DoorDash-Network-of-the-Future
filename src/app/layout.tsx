@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 import { AppBackground } from "@/components/shell/AppBackground";
 
@@ -66,6 +67,12 @@ export default function RootLayout({
       >
         <AppBackground />
         {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            className: "bg-card text-foreground border-border",
+          }}
+        />
       </body>
     </html>
   );

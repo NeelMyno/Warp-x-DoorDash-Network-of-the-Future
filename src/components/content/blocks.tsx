@@ -15,10 +15,11 @@ export function Blocks({
   blocks: ContentBlock[];
   showImageHints?: boolean;
 }) {
+  // Empty blocks array - return null; parent should handle empty state
   if (!blocks.length) return null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {blocks.map((block, idx) => {
         const key = `${block.type}-${idx}`;
 
@@ -78,4 +79,11 @@ export function Blocks({
       })}
     </div>
   );
+}
+
+/**
+ * Check if blocks array is empty (for parent components to show empty state).
+ */
+export function isBlocksEmpty(blocks: ContentBlock[]): boolean {
+  return blocks.length === 0;
 }

@@ -3,7 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import type { AdminDiagnostics, DiagnosticCheck, DiagnosticStatus } from "@/lib/diagnostics/admin";
 import { CopyButton } from "@/components/account/CopyButton";
 import { SetupOps } from "@/components/admin/setup-ops";
+import { SfsRateCardEditor } from "@/components/admin/sfs-rate-card-editor";
 import { PORTAL_ASSETS_BUCKET } from "@/lib/assets/constants";
+import type { SfsRateCard } from "@/lib/sfs-calculator/types";
 
 function formatTimestamp(value: string) {
   const d = new Date(value);
@@ -147,7 +149,12 @@ function StatusSummary({ diagnostics }: { diagnostics: AdminDiagnostics }) {
   );
 }
 
-export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics }) {
+interface SetupChecklistProps {
+  diagnostics: AdminDiagnostics;
+  rateCards: SfsRateCard[];
+}
+
+export function SetupChecklist({ diagnostics, rateCards }: SetupChecklistProps) {
   return (
     <div className="space-y-4">
       <StatusSummary diagnostics={diagnostics} />
@@ -182,6 +189,8 @@ export function SetupChecklist({ diagnostics }: { diagnostics: AdminDiagnostics 
       </div>
 
       <PolicyChecklist />
+
+      <SfsRateCardEditor rateCards={rateCards} />
 
       <SetupOps />
     </div>

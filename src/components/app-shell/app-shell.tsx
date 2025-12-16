@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { ModuleConfig } from "@/config/modules";
+import type { ModuleRegistryEntry } from "@/lib/modules/registry";
 import type { UserRole } from "@/lib/auth/roles";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ export function AppShell({
   userEmail: string;
   userFullName: string | null;
   role: UserRole;
-  modules: ModuleConfig[];
+  modules: ModuleRegistryEntry[];
   children: React.ReactNode;
 }) {
   return (

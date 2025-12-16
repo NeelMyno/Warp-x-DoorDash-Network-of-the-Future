@@ -11,6 +11,7 @@ import { SetupChecklist } from "@/components/admin/setup-checklist";
 import { requireUser } from "@/lib/auth/require-user";
 import { parseBlocksJson } from "@/lib/content/blocks";
 import { getAdminDiagnostics } from "@/lib/diagnostics/admin";
+import { getSfsRateCards } from "@/lib/sfs-calculator/get-rate-cards";
 import { redirect } from "next/navigation";
 
 function normalizeTab(value: unknown): AdminTabKey {
@@ -33,10 +34,13 @@ export default async function AdminPage({
   const moduleSlugs = MODULES.map((m) => m.slug);
 
   if (activeTab === "setup") {
-    const diagnostics = await getAdminDiagnostics({
-      supabase,
-      userId: user.id,
-    });
+    const [diagnostics, rateCardsResult] = await Promise.all([
+      getAdminDiagnostics({ supabase, userId: user.id }),
+      getSfsRateCards(supabase),
+    ]);
+
+    // Extract rate cards from structured result (default to empty if error)
+    const rateCards = rateCardsResult.ok ? rateCardsResult.rateCards : [];
 
     return (
       <div className="space-y-6">
@@ -52,7 +56,7 @@ export default async function AdminPage({
           <AdminTabs value={activeTab} />
         </div>
 
-        <SetupChecklist diagnostics={diagnostics} />
+        <SetupChecklist diagnostics={diagnostics} rateCards={rateCards} />
       </div>
     );
   }

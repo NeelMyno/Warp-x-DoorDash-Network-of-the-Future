@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import type { ModuleConfig } from "@/config/modules";
+import type { ModuleRegistryEntry } from "@/lib/modules/registry";
 import type { UserRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +72,7 @@ export function SidebarNav({
   modules,
 }: {
   role: UserRole;
-  modules: ModuleConfig[];
+  modules: ModuleRegistryEntry[];
 }) {
   const pathname = usePathname();
 
@@ -106,7 +106,7 @@ export function SidebarNav({
                 <SidebarItem
                   key={m.slug}
                   href={`/m/${m.slug}`}
-                  label={m.title}
+                  label={m.name}
                   icon={
                     Icon ? (
                       <Icon className="h-4 w-4" strokeWidth={1.75} />

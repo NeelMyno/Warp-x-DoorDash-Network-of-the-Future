@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { MODULES } from "@/config/modules";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 import { requireUser } from "@/lib/auth/require-user";
 import { getProfile } from "@/lib/auth/get-profile";
 import { AppShell } from "@/components/shell/AppShell";
@@ -16,7 +16,7 @@ export default async function AuthedLayout({
   const fullName = profile?.fullName ?? null;
 
   return (
-    <AppShell userEmail={email} userFullName={fullName} role={role} modules={MODULES}>
+    <AppShell userEmail={email} userFullName={fullName} role={role} modules={MODULE_REGISTRY}>
       {children}
     </AppShell>
   );

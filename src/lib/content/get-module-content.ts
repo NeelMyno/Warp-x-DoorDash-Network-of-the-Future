@@ -5,7 +5,7 @@ import { getSignedAssetUrl } from "@/lib/assets/get-signed-url";
 import { createClient } from "@/lib/supabase/server";
 
 export type ResolvedModuleContent = {
-  moduleMeta: Pick<ModuleConfig, "slug" | "title" | "description">;
+  moduleMeta: Pick<ModuleConfig, "slug" | "title" | "description" | "layoutVariant">;
   sections: Record<
     ModuleSectionKey,
     {
@@ -142,6 +142,7 @@ export async function getModuleContent(
       slug: moduleConfig.slug,
       title: moduleConfig.title,
       description: moduleConfig.description,
+      layoutVariant: moduleConfig.layoutVariant,
     },
     sections: resolved,
   };

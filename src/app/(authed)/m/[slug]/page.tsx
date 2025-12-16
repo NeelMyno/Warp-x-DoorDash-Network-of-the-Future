@@ -4,49 +4,73 @@ import {
   MODULE_SECTIONS,
   type ModuleSectionKey,
 } from "@/config/modules";
-import { Blocks } from "@/components/content/blocks";
+import { getModuleBySlug, normalizeModuleTab } from "@/lib/modules/registry";
+import { Blocks, isBlocksEmpty } from "@/components/content/blocks";
+import { resolveModuleLayout } from "@/components/modules/layouts/resolve-module-layout";
 import { requireUser } from "@/lib/auth/require-user";
 import { getModuleContent } from "@/lib/content/get-module-content";
+import { getSfsRateCards } from "@/lib/sfs-calculator/get-rate-cards";
+import type { SfsRateCard } from "@/lib/sfs-calculator/types";
+import type { SfsConfigError } from "@/components/modules/sfs/sfs-calculator";
 
 const SECTION_KEYS: ModuleSectionKey[] = ["end-vision", "progress", "roadmap"];
 
 export default async function ModulePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { slug } = await params;
-  const { role } = await requireUser();
+  const { tab } = await searchParams;
+  const { role, supabase } = await requireUser();
+
+  // Lookup module in registry
+  const moduleEntry = getModuleBySlug(slug);
+  if (!moduleEntry) notFound();
+
   const resolved = await getModuleContent(slug);
   if (!resolved) notFound();
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-[length:var(--warp-fs-page-title)] font-semibold leading-[var(--warp-lh-page-title)] tracking-tight text-foreground">
-          {resolved.moduleMeta.title}
-        </h2>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          {resolved.moduleMeta.description}
-        </p>
-      </div>
+  // Build sections for the layout
+  const sections = SECTION_KEYS.map((key) => {
+    const label = MODULE_SECTIONS.find((s) => s.key === key)?.label ?? key;
+    const section = resolved.sections[key];
+    const isEmpty = isBlocksEmpty(section.blocks);
 
-      <div className="space-y-10">
-        {SECTION_KEYS.map((key) => {
-          const label = MODULE_SECTIONS.find((s) => s.key === key)?.label ?? key;
-          const section = resolved.sections[key];
+    return {
+      key,
+      label,
+      isEmpty,
+      content: (
+        <Blocks blocks={section.blocks} showImageHints={role === "admin"} />
+      ),
+    };
+  });
 
-          return (
-            <section key={key} id={key} className="space-y-4">
-              <h3 className="text-[length:var(--warp-fs-section-title)] font-semibold leading-[var(--warp-lh-section-title)] text-foreground">
-                {label}
-              </h3>
+  // Fetch rate cards for calculator layouts (with structured result)
+  let rateCards: SfsRateCard[] = [];
+  let configError: SfsConfigError | null = null;
 
-              <Blocks blocks={section.blocks} showImageHints={role === "admin"} />
-            </section>
-          );
-        })}
-      </div>
-    </div>
-  );
+  if (moduleEntry.layout === "calculator") {
+    const result = await getSfsRateCards(supabase);
+    if (result.ok) {
+      rateCards = result.rateCards;
+    } else {
+      configError = { reason: result.reason, message: result.message };
+    }
+  }
+
+  // Resolve and render the appropriate layout
+  return resolveModuleLayout({
+    moduleEntry,
+    title: resolved.moduleMeta.title,
+    description: resolved.moduleMeta.description,
+    sections,
+    activeTab: normalizeModuleTab(moduleEntry, tab),
+    rateCards,
+    configError,
+    isAdmin: role === "admin",
+  });
 }

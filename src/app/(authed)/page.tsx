@@ -1,4 +1,4 @@
-import { MODULES } from "@/config/modules";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 import { requireUser } from "@/lib/auth/require-user";
 import { ModuleCard } from "@/components/modules/module-card";
 
@@ -18,10 +18,10 @@ export default async function PortalPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {MODULES.map((m) => (
+        {MODULE_REGISTRY.map((m) => (
           <ModuleCard
             key={m.slug}
-            title={m.title}
+            title={m.name}
             description={m.description}
             href={`/m/${m.slug}`}
           />
