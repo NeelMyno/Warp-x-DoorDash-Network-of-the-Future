@@ -13,6 +13,7 @@ import { IconGrid, IconShield, IconStack, IconUser } from "@/components/icons";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   Building2,
+  Network,
   Package,
   RefreshCw,
   Route,
@@ -23,6 +24,7 @@ import {
 const MODULE_ICON_BY_SLUG = {
   "big-and-bulky": Package,
   sfs: ShoppingBag,
+  "network-enhancements": Network,
   "middle-mile-to-spokes": Route,
   "first-mile-to-hubs-or-spokes": Building2,
   returns: RotateCcw,

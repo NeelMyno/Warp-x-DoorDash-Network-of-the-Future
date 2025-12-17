@@ -69,17 +69,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { market, vehicle_type, base_cost, cost_per_mile, stop_fee, driver_cost } = parsed.data;
+    const { vehicle_type, base_fee, per_mile_rate, per_stop_rate } = parsed.data;
 
     const { data, error } = await auth.supabase
       .from("sfs_rate_cards")
       .insert({
-        market,
         vehicle_type,
-        base_cost,
-        cost_per_mile,
-        stop_fee,
-        driver_cost,
+        base_fee,
+        per_mile_rate,
+        per_stop_rate,
       })
       .select()
       .single();
@@ -87,7 +85,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("[sfs-rate-cards] Insert error:", error.code, error.message);
       if (error.code === "23505") {
-        return NextResponse.json({ error: "Rate card already exists for this market/vehicle" }, { status: 409 });
+        return NextResponse.json({ error: "Rate card already exists for this vehicle type" }, { status: 409 });
       }
       return NextResponse.json({ error: "Failed to create rate card" }, { status: 500 });
     }
@@ -95,7 +93,6 @@ export async function POST(request: NextRequest) {
     // Audit log
     await writeAudit(auth.supabase, auth.user, "sfs_rate_card_created", {
       rate_card_id: data.id,
-      market,
       vehicle_type,
     });
 
@@ -128,17 +125,15 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const { id, market, vehicle_type, base_cost, cost_per_mile, stop_fee, driver_cost } = parsed.data;
+    const { id, vehicle_type, base_fee, per_mile_rate, per_stop_rate } = parsed.data;
 
     const { data, error } = await auth.supabase
       .from("sfs_rate_cards")
       .update({
-        market,
         vehicle_type,
-        base_cost,
-        cost_per_mile,
-        stop_fee,
-        driver_cost,
+        base_fee,
+        per_mile_rate,
+        per_stop_rate,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -148,7 +143,7 @@ export async function PATCH(request: NextRequest) {
     if (error) {
       console.error("[sfs-rate-cards] Update error:", error.code, error.message);
       if (error.code === "23505") {
-        return NextResponse.json({ error: "Rate card already exists for this market/vehicle" }, { status: 409 });
+        return NextResponse.json({ error: "Rate card already exists for this vehicle type" }, { status: 409 });
       }
       return NextResponse.json({ error: "Failed to update rate card" }, { status: 500 });
     }
@@ -156,7 +151,6 @@ export async function PATCH(request: NextRequest) {
     // Audit log
     await writeAudit(auth.supabase, auth.user, "sfs_rate_card_updated", {
       rate_card_id: id,
-      market,
       vehicle_type,
     });
 
@@ -174,6 +168,18 @@ export async function DELETE(request: NextRequest) {
   const auth = await requireAdmin();
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  // Guardrail: never allow deleting the last remaining rate card.
+  try {
+    const { count, error: countError } = await auth.supabase
+      .from("sfs_rate_cards")
+      .select("id", { count: "exact", head: true });
+    if (!countError && typeof count === "number" && count <= 1) {
+      return NextResponse.json({ error: "At least one rate card must remain" }, { status: 409 });
+    }
+  } catch {
+    // Best-effort: if count fails, proceed and let the delete fail naturally.
   }
 
   const { searchParams } = new URL(request.url);
@@ -209,4 +215,3 @@ export async function DELETE(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
-

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2, X, Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +13,22 @@ interface Props {
   rateCards: SfsRateCard[];
 }
 
-const VEHICLE_OPTIONS = [
+const VEHICLE_OPTIONS: { value: VehicleType; label: string }[] = [
   { value: "Cargo Van", label: "Cargo Van" },
-  { value: "Box Truck", label: "Box Truck" },
+  { value: "26' Box Truck", label: "26' Box Truck" },
 ];
 
-interface EditingRow {
+type EditingRow = {
   id: string | null; // null = new row
-  market: string;
   vehicle_type: VehicleType;
-  base_cost: string;
-  cost_per_mile: string;
-  stop_fee: string;
-  driver_cost: string;
+  base_fee: string;
+  per_mile_rate: string;
+  per_stop_rate: string;
+};
+
+function toMoneyCell(value: number) {
+  if (!Number.isFinite(value)) return "—";
+  return `$${value.toFixed(2)}`;
 }
 
 export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
@@ -35,15 +38,24 @@ export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
+  const sortedCards = React.useMemo(
+    () => [...cards].sort((a, b) => a.vehicle_type.localeCompare(b.vehicle_type)),
+    [cards],
+  );
+
+  const missingVehicleTypes = React.useMemo(() => {
+    const existing = new Set(cards.map((c) => c.vehicle_type));
+    return VEHICLE_OPTIONS.map((o) => o.value).filter((t) => !existing.has(t));
+  }, [cards]);
+
   const startAdd = () => {
+    const vehicle_type = missingVehicleTypes[0] ?? "Cargo Van";
     setEditing({
       id: null,
-      market: "",
-      vehicle_type: "Cargo Van",
-      base_cost: "0",
-      cost_per_mile: "0",
-      stop_fee: "0",
-      driver_cost: "0",
+      vehicle_type,
+      base_fee: "0",
+      per_mile_rate: "0",
+      per_stop_rate: "0",
     });
     setError(null);
   };
@@ -51,12 +63,10 @@ export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
   const startEdit = (card: SfsRateCard) => {
     setEditing({
       id: card.id,
-      market: card.market,
       vehicle_type: card.vehicle_type,
-      base_cost: String(card.base_cost),
-      cost_per_mile: String(card.cost_per_mile),
-      stop_fee: String(card.stop_fee),
-      driver_cost: String(card.driver_cost),
+      base_fee: String(card.base_fee),
+      per_mile_rate: String(card.per_mile_rate),
+      per_stop_rate: String(card.per_stop_rate),
     });
     setError(null);
   };
@@ -68,24 +78,26 @@ export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
 
   const handleSave = async () => {
     if (!editing) return;
-    const { id, market, vehicle_type, base_cost, cost_per_mile, stop_fee, driver_cost } = editing;
+    const { id, vehicle_type, base_fee, per_mile_rate, per_stop_rate } = editing;
 
-    if (!market.trim()) {
-      setError("Market is required");
+    const parsed = {
+      vehicle_type,
+      base_fee: Number(base_fee),
+      per_mile_rate: Number(per_mile_rate),
+      per_stop_rate: Number(per_stop_rate),
+    };
+
+    if (
+      !Number.isFinite(parsed.base_fee) ||
+      !Number.isFinite(parsed.per_mile_rate) ||
+      !Number.isFinite(parsed.per_stop_rate)
+    ) {
+      setError("All values must be valid numbers.");
       return;
     }
 
-    const parsed = {
-      market: market.trim(),
-      vehicle_type,
-      base_cost: parseFloat(base_cost) || 0,
-      cost_per_mile: parseFloat(cost_per_mile) || 0,
-      stop_fee: parseFloat(stop_fee) || 0,
-      driver_cost: parseFloat(driver_cost) || 0,
-    };
-
-    if (parsed.cost_per_mile < 0 || parsed.driver_cost < 0 || parsed.base_cost < 0 || parsed.stop_fee < 0) {
-      setError("Values cannot be negative");
+    if (parsed.base_fee < 0 || parsed.per_mile_rate < 0 || parsed.per_stop_rate < 0) {
+      setError("Values cannot be negative.");
       return;
     }
 
@@ -99,12 +111,12 @@ export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
         body: JSON.stringify(id ? { id, ...parsed } : parsed),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to save");
+        throw new Error((data as { error?: string }).error || "Failed to save");
       }
 
-      const saved = await res.json();
+      const saved = data as SfsRateCard;
       if (id) {
         setCards((prev) => prev.map((c) => (c.id === id ? saved : c)));
       } else {
@@ -119,12 +131,19 @@ export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
   };
 
   const handleDelete = async (id: string) => {
+    if (cards.length <= 1) {
+      setError("At least one rate card must remain.");
+      return;
+    }
     if (!confirm("Delete this rate card?")) return;
     setDeleting(id);
 
     try {
       const res = await fetch(`/api/admin/sfs-rate-cards?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error || "Failed to delete");
+      }
       setCards((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
@@ -133,119 +152,152 @@ export function SfsRateCardEditor({ rateCards: initialCards }: Props) {
     }
   };
 
+  const addDisabled = !!editing || missingVehicleTypes.length === 0;
+
   return (
     <ContentPanel
       title="SFS Rate Cards"
-      description="Manage rate cards for the SFS Route Economics Calculator."
+      description="Rates for the Ship From Store Route Economics Calculator (one row per vehicle type)."
       right={
-        <Button size="sm" variant="outline" onClick={startAdd} disabled={!!editing}>
+        <Button size="sm" variant="outline" onClick={startAdd} disabled={addDisabled}>
           <Plus className="mr-1.5 h-3 w-3" />
           Add
         </Button>
       }
     >
-      {error && (
+      {error ? (
         <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
-      )}
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              <th className="pb-2 pr-3">Market</th>
               <th className="pb-2 pr-3">Vehicle</th>
-              <th className="pb-2 pr-3 text-right">Base Cost</th>
-              <th className="pb-2 pr-3 text-right">$/Mile</th>
-              <th className="pb-2 pr-3 text-right">Stop Fee</th>
-              <th className="pb-2 pr-3 text-right">Driver Cost</th>
-              <th className="pb-2 w-20"></th>
+              <th className="pb-2 pr-3 text-right">Base fee</th>
+              <th className="pb-2 pr-3 text-right">Per mile</th>
+              <th className="pb-2 pr-3 text-right">Per stop</th>
+              <th className="pb-2 w-20" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
-            {/* Add/Edit row */}
-            {editing && (
+            {editing ? (
               <tr className="bg-muted/20">
-                <td className="py-2 pr-2">
-                  <Input
-                    value={editing.market}
-                    onChange={(e) => setEditing({ ...editing, market: e.target.value })}
-                    placeholder="e.g. Chicago"
-                    className="h-8 text-sm"
-                  />
-                </td>
                 <td className="py-2 pr-2">
                   <Select
                     value={editing.vehicle_type}
-                    onChange={(e) => setEditing({ ...editing, vehicle_type: e.target.value as VehicleType })}
+                    onChange={(e) =>
+                      setEditing({ ...editing, vehicle_type: e.target.value as VehicleType })
+                    }
                     options={VEHICLE_OPTIONS}
                     className="h-8 text-sm"
+                    disabled={!!editing.id} // don't change vehicle_type while editing an existing row
                   />
                 </td>
                 <td className="py-2 pr-2">
-                  <Input type="number" min="0" step="0.01" value={editing.base_cost}
-                    onChange={(e) => setEditing({ ...editing, base_cost: e.target.value })}
-                    className="h-8 w-20 text-right text-sm" />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editing.base_fee}
+                    onChange={(e) => setEditing({ ...editing, base_fee: e.target.value })}
+                    className="h-8 w-24 text-right text-sm"
+                  />
                 </td>
                 <td className="py-2 pr-2">
-                  <Input type="number" min="0" step="0.01" value={editing.cost_per_mile}
-                    onChange={(e) => setEditing({ ...editing, cost_per_mile: e.target.value })}
-                    className="h-8 w-20 text-right text-sm" />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editing.per_mile_rate}
+                    onChange={(e) => setEditing({ ...editing, per_mile_rate: e.target.value })}
+                    className="h-8 w-24 text-right text-sm"
+                  />
                 </td>
                 <td className="py-2 pr-2">
-                  <Input type="number" min="0" step="0.01" value={editing.stop_fee}
-                    onChange={(e) => setEditing({ ...editing, stop_fee: e.target.value })}
-                    className="h-8 w-20 text-right text-sm" />
-                </td>
-                <td className="py-2 pr-2">
-                  <Input type="number" min="0" step="0.01" value={editing.driver_cost}
-                    onChange={(e) => setEditing({ ...editing, driver_cost: e.target.value })}
-                    className="h-8 w-20 text-right text-sm" />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editing.per_stop_rate}
+                    onChange={(e) => setEditing({ ...editing, per_stop_rate: e.target.value })}
+                    className="h-8 w-24 text-right text-sm"
+                  />
                 </td>
                 <td className="py-2">
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSave} disabled={saving}>
-                      {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={handleSave}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Check className="h-3 w-3" />
+                      )}
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} disabled={saving}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={cancelEdit}
+                      disabled={saving}
+                    >
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
                 </td>
               </tr>
-            )}
+            ) : null}
 
-            {/* Existing rows */}
-            {cards.map((card) => (
+            {sortedCards.map((card) => (
               <tr key={card.id} className={editing?.id === card.id ? "hidden" : ""}>
-                <td className="py-2 pr-3 font-medium">{card.market}</td>
-                <td className="py-2 pr-3">{card.vehicle_type}</td>
-                <td className="py-2 pr-3 text-right font-mono">${card.base_cost.toFixed(2)}</td>
-                <td className="py-2 pr-3 text-right font-mono">${card.cost_per_mile.toFixed(2)}</td>
-                <td className="py-2 pr-3 text-right font-mono">${card.stop_fee.toFixed(2)}</td>
-                <td className="py-2 pr-3 text-right font-mono">${card.driver_cost.toFixed(2)}</td>
+                <td className="py-2 pr-3 font-medium">{card.vehicle_type}</td>
+                <td className="py-2 pr-3 text-right font-mono">{toMoneyCell(card.base_fee)}</td>
+                <td className="py-2 pr-3 text-right font-mono">{toMoneyCell(card.per_mile_rate)}</td>
+                <td className="py-2 pr-3 text-right font-mono">{toMoneyCell(card.per_stop_rate)}</td>
                 <td className="py-2">
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(card)} disabled={!!editing}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => startEdit(card)}
+                      disabled={!!editing}
+                    >
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(card.id)} disabled={deleting === card.id || !!editing}>
-                      {deleting === card.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(card.id)}
+                      disabled={!!editing || deleting === card.id || cards.length <= 1}
+                      title={cards.length <= 1 ? "At least one rate card must remain." : undefined}
+                    >
+                      {deleting === card.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
                     </Button>
                   </div>
                 </td>
               </tr>
             ))}
 
-            {cards.length === 0 && !editing && (
+            {sortedCards.length === 0 && !editing ? (
               <tr>
-                <td colSpan={7} className="py-6 text-center text-muted-foreground">
-                  No rate cards configured. Click &ldquo;Add&rdquo; to create one.
+                <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                  No rate cards configured. Run `supabase/sql/05_sfs_rate_cards.sql` and refresh.
                 </td>
               </tr>
-            )}
+            ) : null}
           </tbody>
         </table>
       </div>

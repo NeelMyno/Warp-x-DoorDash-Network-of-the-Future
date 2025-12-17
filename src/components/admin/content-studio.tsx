@@ -854,7 +854,7 @@ export function ContentStudio({
       {dbAvailable && !auditAvailable ? (
         <ContentPanel
           title="Audit log not ready"
-          description="Run the SQL file to enable history, compare confidence, and restore."
+          description="Run the SQL file to enable history and restore."
           className="border-primary/20 bg-primary/5"
         >
           <div className="space-y-2 text-sm text-muted-foreground">

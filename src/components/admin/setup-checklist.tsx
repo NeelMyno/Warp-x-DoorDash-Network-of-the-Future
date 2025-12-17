@@ -4,6 +4,7 @@ import type { AdminDiagnostics, DiagnosticCheck, DiagnosticStatus } from "@/lib/
 import { CopyButton } from "@/components/account/CopyButton";
 import { SetupOps } from "@/components/admin/setup-ops";
 import { SfsRateCardEditor } from "@/components/admin/sfs-rate-card-editor";
+import { NetworkEnhancementsSetupSection } from "@/components/admin/network-enhancements-setup";
 import { PORTAL_ASSETS_BUCKET } from "@/lib/assets/constants";
 import type { SfsRateCard } from "@/lib/sfs-calculator/types";
 
@@ -189,6 +190,8 @@ export function SetupChecklist({ diagnostics, rateCards }: SetupChecklistProps) 
       </div>
 
       <PolicyChecklist />
+
+      <NetworkEnhancementsSetupSection />
 
       <SfsRateCardEditor rateCards={rateCards} />
 

@@ -74,6 +74,10 @@ function isImageContentType(type: string | null) {
   return typeof type === "string" && type.startsWith("image/");
 }
 
+function isPdfContentType(type: string | null) {
+  return typeof type === "string" && type.toLowerCase().startsWith("application/pdf");
+}
+
 async function signUrl(path: string) {
   const supabase = createClient();
   const { data, error } = await supabase.storage
@@ -96,12 +100,14 @@ export function AssetPickerDialog({
   onOpenChange,
   moduleSlug,
   imagesOnly,
+  pdfOnly,
   onSelect,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleSlug?: string;
   imagesOnly?: boolean;
+  pdfOnly?: boolean;
   onSelect: (asset: PickedAsset) => void;
 }) {
   const supabase = React.useMemo(() => createClient(), []);
@@ -127,6 +133,9 @@ export function AssetPickerDialog({
 
       if (imagesOnly) {
         q = q.ilike("content_type", "image/%");
+      }
+      if (pdfOnly) {
+        q = q.ilike("content_type", "application/pdf%");
       }
 
       const trimmed = nextQuery.trim();
@@ -263,7 +272,7 @@ export function AssetPickerDialog({
                     {uploading ? "Uploading…" : "Choose file"}
                     <input
                       type="file"
-                      accept={imagesOnly ? "image/*" : undefined}
+                      accept={imagesOnly ? "image/*" : pdfOnly ? "application/pdf" : undefined}
                       className="sr-only"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -300,6 +309,10 @@ export function AssetPickerDialog({
                     {isImageContentType(selected.content_type) ? (
                       <Badge variant="accent" className="px-2 py-0.5 text-[11px]">
                         image
+                      </Badge>
+                    ) : isPdfContentType(selected.content_type) ? (
+                      <Badge variant="outline" className="px-2 py-0.5 text-[11px]">
+                        pdf
                       </Badge>
                     ) : (
                       <Badge variant="muted" className="px-2 py-0.5 text-[11px]">
@@ -445,6 +458,10 @@ export function AssetPickerDialog({
               if (!selected) return;
               if (imagesOnly && !isImageContentType(selected.content_type)) {
                 setError("Select an image asset (PNG/JPG/SVG/etc.).");
+                return;
+              }
+              if (pdfOnly && !isPdfContentType(selected.content_type)) {
+                setError("Select a PDF asset.");
                 return;
               }
               onSelect(selected);

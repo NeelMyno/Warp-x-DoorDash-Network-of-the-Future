@@ -4,38 +4,19 @@
 
 import { z } from "zod";
 
-const positiveNumber = z.number().finite().nonnegative();
-const positiveNonZero = z.number().finite().positive({ message: "Must be > 0" });
+const nonNegative = z.number().finite().nonnegative();
+const positive = z.number().finite().positive({ message: "Must be > 0" });
 
 export const SfsInputsSchema = z.object({
-  // Required dropdowns
+  // Required fields
   market: z.string().min(1, "Please select a market"),
-  vehicle_type: z.enum(["Cargo Van", "Box Truck"]),
-
-  // Anchor store
-  anchor_packages: positiveNonZero.refine((v) => v >= 1, { message: "At least 1 package" }),
-  anchor_stops: positiveNumber,
-  pickup_route_miles: positiveNumber,
-  avg_routing_time_per_stop: positiveNonZero.refine((v) => v > 0, { message: "Must be > 0" }),
-  pickup_window_minutes: positiveNumber,
-  avg_cubic_inches_per_package: positiveNonZero.refine((v) => v >= 1, { message: "At least 1 cu in" }),
-
-  // Satellite stores
-  satellite_stores: positiveNumber,
-  satellite_packages: positiveNumber,
-  satellite_extra_miles: positiveNumber,
-  miles_to_hub_or_spoke: positiveNumber,
-
-  // Constraints
-  max_satellite_packages_allowed: positiveNumber,
-  max_satellite_miles_allowed: positiveNumber,
-  max_driver_time_minutes: positiveNonZero.refine((v) => v >= 1, { message: "At least 1 minute" }),
-
-  // Optional overrides
-  override_base_cost: z.number().finite().nonnegative().optional(),
-  override_cost_per_mile: z.number().finite().nonnegative().optional(),
-  override_stop_fee: z.number().finite().nonnegative().optional(),
-  override_driver_cost: z.number().finite().nonnegative().optional(),
+  vehicle_type: z.enum(["Cargo Van", "26' Box Truck"]),
+  miles_to_hub_or_spoke: nonNegative,
+  avg_routing_time_per_stop_minutes: nonNegative,
+  default_service_time_minutes: nonNegative,
+  max_driver_time_minutes: positive,
+  avg_speed_mph: positive,
+  default_avg_cubic_inches_per_package: positive,
 });
 
 export type SfsInputsSchemaType = z.infer<typeof SfsInputsSchema>;
@@ -62,15 +43,12 @@ export function validateSfsInputs(
 
 /** Validation schema for API rate card create/update */
 export const RateCardSchema = z.object({
-  market: z.string().min(1, "Market is required"),
-  vehicle_type: z.enum(["Cargo Van", "Box Truck"]),
-  base_cost: z.number().finite().nonnegative(),
-  cost_per_mile: z.number().finite().nonnegative(),
-  stop_fee: z.number().finite().nonnegative(),
-  driver_cost: z.number().finite().nonnegative(),
+  vehicle_type: z.enum(["Cargo Van", "26' Box Truck"]),
+  base_fee: nonNegative,
+  per_mile_rate: nonNegative,
+  per_stop_rate: nonNegative,
 });
 
 export const RateCardUpdateSchema = RateCardSchema.extend({
   id: z.string().uuid("Invalid rate card ID"),
 });
-

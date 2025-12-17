@@ -1,123 +1,145 @@
 /**
  * SFS Route Economics Calculator - Compute Engine
- * Pure function implementing exact formulas from spec.
+ * Pure function implementing exact formulas from docs/calc/SFS calculator 1.pdf.
  */
 
 import type {
   SfsCalculatorInputs,
-  SfsEconomicsResult,
   SfsRateCard,
+  SfsStop,
+  SfsAnchorResult,
+  VehicleType,
 } from "./types";
 
 /**
- * Computes SFS route economics based on inputs and rate card.
- * All formulas match the spec exactly.
+ * Vehicle cubic capacities (cubic inches) per PDF.
+ */
+const VEHICLE_CUBIC_CAPACITY: Record<VehicleType, number> = {
+  "Cargo Van": 650000,
+  "26' Box Truck": 2700000,
+};
+
+export function getVehicleCubicCapacity(vehicleType: VehicleType): number {
+  return VEHICLE_CUBIC_CAPACITY[vehicleType];
+}
+
+function ceilDiv(numerator: number, denominator: number): number {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+    return 0;
+  }
+  return Math.ceil(numerator / denominator);
+}
+
+function sum(values: number[]): number {
+  return values.reduce((acc, v) => acc + (Number.isFinite(v) ? v : 0), 0);
+}
+
+/**
+ * Computes per-anchor results for Ship From Store Route Economics.
+ * All formulas match the PDF pseudocode exactly.
  */
 export function computeSfsEconomics(
   inputs: SfsCalculatorInputs,
-  rateCard: SfsRateCard
-): SfsEconomicsResult {
-  // Apply overrides if provided
-  const base_cost = inputs.override_base_cost ?? rateCard.base_cost;
-  const cost_per_mile = inputs.override_cost_per_mile ?? rateCard.cost_per_mile;
-  const stop_fee = inputs.override_stop_fee ?? rateCard.stop_fee;
-  const driver_cost = inputs.override_driver_cost ?? rateCard.driver_cost;
+  stops: SfsStop[],
+  rateCard: SfsRateCard,
+): SfsAnchorResult[] {
+  const base_fee = rateCard.base_fee;
+  const cost_per_mile = rateCard.per_mile_rate;
+  const stop_fee = rateCard.per_stop_rate;
+  const vehicle_cubic_capacity = getVehicleCubicCapacity(inputs.vehicle_type);
 
-  // 3.1 Capacity
-  const cubic_capacity = inputs.vehicle_type === "Cargo Van" ? 260000 : 520000;
-  const max_packages_per_vehicle =
-    inputs.avg_cubic_inches_per_package > 0
-      ? cubic_capacity / inputs.avg_cubic_inches_per_package
-      : cubic_capacity;
-
-  // 3.2 Drivers
-  const total_packages = inputs.anchor_packages + inputs.satellite_packages;
-  const total_stops = inputs.anchor_stops + inputs.satellite_stores;
-
-  const drivers_by_volume =
-    max_packages_per_vehicle > 0
-      ? Math.ceil(total_packages / max_packages_per_vehicle)
-      : 1;
-
-  const drivers_by_time =
-    inputs.max_driver_time_minutes > 0
-      ? Math.ceil(
-          (total_stops * inputs.avg_routing_time_per_stop) /
-            inputs.max_driver_time_minutes
-        )
-      : 1;
-
-  const drivers_required = Math.max(drivers_by_volume, drivers_by_time, 1);
-
-  // 3.3 Distance
-  const total_route_miles =
-    inputs.pickup_route_miles +
-    inputs.satellite_extra_miles +
-    inputs.miles_to_hub_or_spoke;
-
-  // 3.4 Anchor economics
-  const distance_cost = cost_per_mile * total_route_miles;
-  const driver_block_cost = driver_cost * drivers_required;
-  const anchor_route_cost = base_cost + distance_cost + driver_block_cost;
-  const anchor_cpp =
-    inputs.anchor_packages > 0
-      ? anchor_route_cost / inputs.anchor_packages
-      : 0;
-
-  // 3.5 Density eligibility
-  const avg_satellite_distance =
-    inputs.satellite_stores > 0
-      ? inputs.satellite_extra_miles / inputs.satellite_stores
-      : 0;
-
-  const density_eligible =
-    inputs.pickup_window_minutes <= 120 &&
-    avg_satellite_distance <= inputs.max_satellite_miles_allowed &&
-    inputs.satellite_packages <= inputs.max_satellite_packages_allowed;
-
-  // 3.6 Satellite economics
-  const satellite_incremental_cost =
-    cost_per_mile * inputs.satellite_extra_miles +
-    stop_fee * inputs.satellite_stores;
-
-  // Satellite CPP: if density eligible, use incremental/satellite_packages, else anchor_cpp
-  let satellite_cpp: number | null = null;
-  if (inputs.satellite_packages > 0) {
-    if (density_eligible) {
-      satellite_cpp = satellite_incremental_cost / inputs.satellite_packages;
-    } else {
-      satellite_cpp = anchor_cpp;
-    }
+  const anchors = new Map<string, SfsStop[]>();
+  for (const stop of stops) {
+    if (!anchors.has(stop.anchor_id)) anchors.set(stop.anchor_id, []);
+    anchors.get(stop.anchor_id)!.push(stop);
   }
 
-  // 3.7 Blended outputs
-  const total_cost = anchor_route_cost + satellite_incremental_cost;
-  const blended_cpp = total_packages > 0 ? total_cost / total_packages : 0;
-  const savings_absolute = anchor_cpp - blended_cpp;
-  const savings_percent = anchor_cpp > 0 ? savings_absolute / anchor_cpp : 0;
+  const results: SfsAnchorResult[] = [];
 
-  return {
-    cubic_capacity,
-    max_packages_per_vehicle,
-    total_packages,
-    total_stops,
-    drivers_by_volume,
-    drivers_by_time,
-    drivers_required,
-    total_route_miles,
-    distance_cost,
-    driver_block_cost,
-    anchor_route_cost,
-    anchor_cpp,
-    avg_satellite_distance,
-    density_eligible,
-    satellite_incremental_cost,
-    satellite_cpp,
-    total_cost,
-    blended_cpp,
-    savings_absolute,
-    savings_percent,
-    rate_card: { base_cost, cost_per_mile, stop_fee, driver_cost },
-  };
+  for (const [anchor_id, anchorStopsAll] of anchors.entries()) {
+    const anchor_stops = anchorStopsAll.filter((s) => s.stop_type === "Anchor");
+    const satellite_stops = anchorStopsAll.filter((s) => s.stop_type === "Satellite");
+
+    const issues: string[] = [];
+    if (anchor_stops.length === 0) issues.push("Missing Anchor stop row for this anchor_id.");
+
+    const anchor_packages = sum(anchor_stops.map((s) => s.packages));
+    const satellite_packages = sum(satellite_stops.map((s) => s.packages));
+    const total_packages = anchor_packages + satellite_packages;
+    const total_stops = anchorStopsAll.length;
+
+    const total_cube = sum(
+      anchorStopsAll.map((s) => {
+        const cubePerPkg =
+          typeof s.avg_cubic_inches_per_package === "number" && s.avg_cubic_inches_per_package > 0
+            ? s.avg_cubic_inches_per_package
+            : inputs.default_avg_cubic_inches_per_package;
+        return s.packages * cubePerPkg;
+      }),
+    );
+
+    const vehicles_by_cube = ceilDiv(total_cube, vehicle_cubic_capacity);
+
+    const latest_start = Math.max(...anchorStopsAll.map((s) => s.pickup_window_start_minutes));
+    const earliest_end = Math.min(...anchorStopsAll.map((s) => s.pickup_window_end_minutes));
+    const pickup_overlap_minutes = Math.max(0, earliest_end - latest_start);
+
+    const service_minutes = sum(
+      anchorStopsAll.map((s) => {
+        const service =
+          typeof s.service_time_minutes === "number" && Number.isFinite(s.service_time_minutes)
+            ? s.service_time_minutes
+            : inputs.default_service_time_minutes;
+        return service;
+      }),
+    );
+
+    const routing_minutes = total_stops * inputs.avg_routing_time_per_stop_minutes;
+    const pickup_minutes_required = service_minutes + routing_minutes;
+
+    const hub_travel_minutes = (inputs.miles_to_hub_or_spoke / inputs.avg_speed_mph) * 60;
+    const total_minutes_required = pickup_minutes_required + hub_travel_minutes;
+
+    const drivers_by_time = ceilDiv(total_minutes_required, inputs.max_driver_time_minutes);
+    const drivers_required = Math.max(vehicles_by_cube, drivers_by_time);
+
+    const window_feasible = pickup_overlap_minutes >= pickup_minutes_required;
+
+    const total_route_miles = inputs.miles_to_hub_or_spoke;
+    const distance_cost = cost_per_mile * total_route_miles;
+    const stop_cost = stop_fee * satellite_stops.length;
+    const anchor_route_cost = base_fee + distance_cost;
+
+    const anchor_cpp = anchor_packages > 0 ? anchor_route_cost / anchor_packages : 0;
+    const blended_cost = anchor_route_cost + stop_cost;
+    const blended_cpp = total_packages > 0 ? blended_cost / total_packages : 0;
+
+    results.push({
+      anchor_id,
+      anchor_packages,
+      satellite_packages,
+      satellite_stops: satellite_stops.length,
+      total_packages,
+      total_stops,
+      total_cube,
+      vehicles_required_by_cube: vehicles_by_cube,
+      pickup_overlap_minutes,
+      pickup_minutes_required,
+      service_minutes,
+      routing_minutes,
+      hub_travel_minutes,
+      total_minutes_required,
+      drivers_by_time,
+      drivers_required,
+      window_feasible,
+      anchor_route_cost,
+      blended_cost,
+      anchor_cpp,
+      blended_cpp,
+      issues: issues.length ? issues : undefined,
+      isValid: issues.length === 0,
+    });
+  }
+
+  return results;
 }
-

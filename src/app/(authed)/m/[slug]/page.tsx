@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import {
   MODULE_SECTIONS,
@@ -6,6 +6,7 @@ import {
 } from "@/config/modules";
 import { getModuleBySlug, normalizeModuleTab } from "@/lib/modules/registry";
 import { Blocks, isBlocksEmpty } from "@/components/content/blocks";
+import { NetworkEnhancementsModule } from "@/components/modules/network-enhancements/NetworkEnhancementsModule";
 import { resolveModuleLayout } from "@/components/modules/layouts/resolve-module-layout";
 import { requireUser } from "@/lib/auth/require-user";
 import { getModuleContent } from "@/lib/content/get-module-content";
@@ -20,15 +21,51 @@ export default async function ModulePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; sub?: string; variant?: string; panel?: string }>;
 }) {
   const { slug } = await params;
-  const { tab } = await searchParams;
+  const { tab, sub, variant, panel } = await searchParams;
   const { role, supabase } = await requireUser();
 
   // Lookup module in registry
   const moduleEntry = getModuleBySlug(slug);
   if (!moduleEntry) notFound();
+
+  if (slug === "network-enhancements") {
+    const normalizedSub =
+      sub === "spoke" || sub === "network" ? sub : "hub";
+    if (normalizedSub === "network") {
+      const normalizedPanel =
+        panel === "highlights" || panel === "cost" ? panel : "pdf";
+      const shouldRedirect =
+        sub !== normalizedSub || panel !== normalizedPanel || variant;
+      if (shouldRedirect) {
+        redirect(
+          `/m/${slug}?sub=${normalizedSub}&panel=${encodeURIComponent(normalizedPanel)}`,
+        );
+      }
+    } else {
+      const normalizedVariant = variant === "future" ? "future" : "example";
+      const shouldRedirect =
+        sub !== normalizedSub || variant !== normalizedVariant || panel;
+      if (shouldRedirect) {
+        redirect(
+          `/m/${slug}?sub=${normalizedSub}&variant=${encodeURIComponent(normalizedVariant)}`,
+        );
+      }
+    }
+
+    return (
+      <NetworkEnhancementsModule
+        slug={slug}
+        role={role}
+        subParam={sub}
+        variantParam={variant}
+        panelParam={panel}
+        supabase={supabase}
+      />
+    );
+  }
 
   const resolved = await getModuleContent(slug);
   if (!resolved) notFound();

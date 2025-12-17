@@ -2,106 +2,123 @@
  * SFS Route Economics Calculator Types
  */
 
-export type VehicleType = "Cargo Van" | "Box Truck";
+export type VehicleType = "Cargo Van" | "26' Box Truck";
+export type StopType = "Anchor" | "Satellite";
 
-/** Rate card row from database */
+export const SFS_VEHICLE_TYPES: VehicleType[] = ["Cargo Van", "26' Box Truck"];
+
+export const SFS_MARKETS = [
+  "Chicago",
+  "Dallas",
+  "Los Angeles",
+  "New York City",
+  "Atlanta",
+  "Seattle",
+  "Miami",
+  "Denver",
+  "Phoenix",
+  "Boston",
+] as const;
+
+export const SFS_STORES_UPLOAD_HEADERS = [
+  "route_id",
+  "anchor_id",
+  "stop_type",
+  "store_name",
+  "address",
+  "city",
+  "state",
+  "zip",
+  "packages",
+  "avg_cubic_inches_per_package",
+  "pickup_window_start_time",
+  "pickup_window_end_time",
+  "service_time_minutes",
+] as const;
+
+/** Rate card row from database (v2: one row per vehicle type). */
 export interface SfsRateCard {
   id: string;
-  market: string;
   vehicle_type: VehicleType;
-  base_cost: number;
-  cost_per_mile: number;
-  stop_fee: number;
-  driver_cost: number;
+  base_fee: number;
+  per_mile_rate: number;
+  per_stop_rate: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-/** Calculator input values */
+/** Calculator input values (top-level). */
 export interface SfsCalculatorInputs {
-  // Required dropdowns
   market: string;
   vehicle_type: VehicleType;
-
-  // Required numeric inputs
-  anchor_packages: number;
-  anchor_stops: number;
-  pickup_route_miles: number;
-  avg_routing_time_per_stop: number;
-  pickup_window_minutes: number;
-  avg_cubic_inches_per_package: number;
-  satellite_stores: number;
-  satellite_packages: number;
-  satellite_extra_miles: number;
   miles_to_hub_or_spoke: number;
-  max_satellite_packages_allowed: number;
-  max_satellite_miles_allowed: number;
+  avg_routing_time_per_stop_minutes: number;
+  default_service_time_minutes: number;
   max_driver_time_minutes: number;
-
-  // Optional rate card overrides
-  override_base_cost?: number;
-  override_cost_per_mile?: number;
-  override_stop_fee?: number;
-  override_driver_cost?: number;
+  avg_speed_mph: number;
+  default_avg_cubic_inches_per_package: number;
 }
 
-/** Computed economics result */
-export interface SfsEconomicsResult {
-  // Capacity
-  cubic_capacity: number;
-  max_packages_per_vehicle: number;
-
-  // Drivers
-  total_packages: number;
-  total_stops: number;
-  drivers_by_volume: number;
-  drivers_by_time: number;
-  drivers_required: number;
-
-  // Distance
-  total_route_miles: number;
-
-  // Anchor economics
-  distance_cost: number;
-  driver_block_cost: number;
-  anchor_route_cost: number;
-  anchor_cpp: number;
-
-  // Density eligibility
-  avg_satellite_distance: number;
-  density_eligible: boolean;
-
-  // Satellite economics
-  satellite_incremental_cost: number;
-  satellite_cpp: number | null;
-
-  // Blended outputs
-  total_cost: number;
-  blended_cpp: number;
-  savings_absolute: number;
-  savings_percent: number;
-
-  // Rate card values used (after overrides)
-  rate_card: {
-    base_cost: number;
-    cost_per_mile: number;
-    stop_fee: number;
-    driver_cost: number;
-  };
+export interface SfsStoreUploadRow {
+  route_id: string;
+  anchor_id: string;
+  stop_type: StopType;
+  store_name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  packages: number;
+  avg_cubic_inches_per_package?: number | null;
+  pickup_window_start_time: string;
+  pickup_window_end_time: string;
+  service_time_minutes?: number | null;
 }
 
-/** Default input values */
-export const DEFAULT_INPUTS: Omit<SfsCalculatorInputs, "market" | "vehicle_type"> = {
-  anchor_packages: 100,
-  anchor_stops: 50,
-  pickup_route_miles: 20,
-  avg_routing_time_per_stop: 5,
-  pickup_window_minutes: 120,
-  avg_cubic_inches_per_package: 1000,
-  satellite_stores: 3,
-  satellite_packages: 30,
-  satellite_extra_miles: 5,
-  miles_to_hub_or_spoke: 10,
-  max_satellite_packages_allowed: 90,
-  max_satellite_miles_allowed: 10,
-  max_driver_time_minutes: 480,
+export interface SfsStop extends SfsStoreUploadRow {
+  pickup_window_start_minutes: number;
+  pickup_window_end_minutes: number;
+}
+
+export type SfsStoreUploadError = {
+  row: number;
+  message: string;
+  field?: keyof SfsStoreUploadRow;
 };
 
+/** Result row for a single anchor_id (v2 per PDF). */
+export type SfsAnchorResult = {
+  anchor_id: string;
+  window_feasible: boolean;
+  pickup_overlap_minutes: number;
+  pickup_minutes_required: number;
+  drivers_required: number;
+  vehicles_required_by_cube: number;
+  total_packages: number;
+  total_stops: number;
+  anchor_route_cost: number;
+  blended_cost: number;
+  anchor_cpp: number;
+  blended_cpp: number;
+  anchor_packages: number;
+  satellite_packages: number;
+  satellite_stops: number;
+  total_cube: number;
+  service_minutes: number;
+  routing_minutes: number;
+  hub_travel_minutes: number;
+  total_minutes_required: number;
+  drivers_by_time: number;
+  issues?: string[];
+  isValid: boolean;
+};
+
+/** Default input values (numeric-only). */
+export const DEFAULT_INPUTS: Omit<SfsCalculatorInputs, "market" | "vehicle_type"> = {
+  miles_to_hub_or_spoke: 10,
+  avg_routing_time_per_stop_minutes: 5,
+  default_service_time_minutes: 5,
+  max_driver_time_minutes: 480,
+  avg_speed_mph: 25,
+  default_avg_cubic_inches_per_package: 1000,
+};

@@ -3,12 +3,12 @@ import type { SfsRateCard, VehicleType } from "./types";
 
 interface RateCardRow {
   id: string;
-  market: string;
   vehicle_type: string;
-  base_cost: string | number;
-  cost_per_mile: string | number;
-  stop_fee: string | number;
-  driver_cost: string | number;
+  base_fee: string | number;
+  per_mile_rate: string | number;
+  per_stop_rate: string | number;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 /** Reason codes for fetch failures */
@@ -51,8 +51,7 @@ export async function getSfsRateCards(
   try {
     const { data, error } = await supabase
       .from("sfs_rate_cards")
-      .select("id, market, vehicle_type, base_cost, cost_per_mile, stop_fee, driver_cost")
-      .order("market")
+      .select("id, vehicle_type, base_fee, per_mile_rate, per_stop_rate, created_at, updated_at")
       .order("vehicle_type");
 
     if (error) {
@@ -93,12 +92,12 @@ export async function getSfsRateCards(
 
     const rateCards = (data as RateCardRow[]).map((row) => ({
       id: row.id,
-      market: row.market,
       vehicle_type: row.vehicle_type as VehicleType,
-      base_cost: parseFloat(String(row.base_cost)) || 0,
-      cost_per_mile: parseFloat(String(row.cost_per_mile)) || 0,
-      stop_fee: parseFloat(String(row.stop_fee)) || 0,
-      driver_cost: parseFloat(String(row.driver_cost)) || 0,
+      base_fee: parseFloat(String(row.base_fee)) || 0,
+      per_mile_rate: parseFloat(String(row.per_mile_rate)) || 0,
+      per_stop_rate: parseFloat(String(row.per_stop_rate)) || 0,
+      created_at: typeof row.created_at === "string" ? row.created_at : undefined,
+      updated_at: typeof row.updated_at === "string" ? row.updated_at : undefined,
     }));
 
     return { ok: true, rateCards };
@@ -113,4 +112,3 @@ export async function getSfsRateCards(
     };
   }
 }
-

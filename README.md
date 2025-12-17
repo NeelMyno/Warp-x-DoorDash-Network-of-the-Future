@@ -19,7 +19,7 @@ Private, authenticated SaaS-style portal for Warp x DoorDash.
 
 4) Create module content tables (run once in Supabase SQL editor):
 - Run `supabase/sql/01_module_content.sql`
-- This enables `/admin` → Content Studio (draft/published blocks stored in `public.module_sections`).
+- This enables `/admin` → Content Studio (module section blocks stored in `public.module_sections`).
 
 5) Create module content audit tables (run once in Supabase SQL editor):
 - Run `supabase/sql/02_module_content_audit.sql`
@@ -46,8 +46,8 @@ Private, authenticated SaaS-style portal for Warp x DoorDash.
 9) Create SFS rate cards table (run once in Supabase SQL editor):
 - Run `supabase/sql/05_sfs_rate_cards.sql`
 - This enables the SFS Route Economics Calculator and Admin rate card management.
-- Seeds **10 markets** × 2 vehicle types = 20 rate cards (Chicago, Dallas, Los Angeles, NYC, Atlanta, Seattle, Miami, Denver, Phoenix, Boston).
-- Uses upsert, so re-running is safe and will update existing rows.
+- Seeds **2 vehicle types** (Cargo Van, 26' Box Truck) with the PDF v2 values.
+- Uses upsert, so re-running is safe and will update existing rows to match the spec.
 - **Note:** If you see "Could not find the table ... schema cache" error after applying, restart Supabase services or refresh your local Supabase instance to clear schema cache.
 
 10) Extend audit log for SFS rate card operations (run once in Supabase SQL editor):
@@ -93,16 +93,13 @@ If the `profiles` table doesn’t exist yet, the UI defaults to role `user`.
 
 ## Smoke test: SFS Route Economics Calculator
 
-1) Visit `/m/sfs` → see Overview tab with module content.
-2) Click **Calculator** tab → see inputs panel and outputs summary.
-3) Market dropdown should show **10 markets** (alphabetically sorted).
-4) Change market and vehicle type → outputs update with corresponding rate card values.
-5) Set pickup window > 120 min → Density Status shows "Not Eligible" with reason.
-6) Click **Copy** button → summary text copied to clipboard with toast.
-7) Click **Reset** button → inputs reset to defaults with toast.
-8) As admin, visit `/admin?tab=setup` → scroll to "SFS Rate Cards" section.
-9) Add/edit/delete rate cards → changes persist and reflect in calculator.
-10) After admin CRUD, refresh `/m/sfs?tab=calculator` → rate card changes are reflected (no redeploy needed).
+1) Visit `/m/sfs` → click **Calculator** tab.
+2) Step 1: Click **Download template CSV** → upload it back into the uploader.
+3) Step 2: Select vehicle type (Cargo Van / 26' Box Truck) → confirm "Rates applied" reflects DB values.
+4) Step 3: Confirm you see one feasibility row per unique `anchor_id` (Pass/Fail).
+5) Step 4: Select an anchor → confirm Anchor CPP / Blended CPP / Total route cost render.
+6) Click **Copy selected** and **Copy all** → output matches the PDF `OUTPUT_TEMPLATE` format (per-anchor, separated by blank lines).
+7) As admin, visit `/admin?tab=setup` → scroll to "SFS Rate Cards" → edit a value → refresh `/m/sfs?tab=calculator` to see it applied.
 
 ## Smoke test: Missing Table Error State
 
@@ -114,21 +111,19 @@ If the `profiles` table doesn’t exist yet, the UI defaults to role `user`.
 
 Before shipping SFS calculator changes:
 
-- [ ] `npm run lint` passes
-- [ ] `npm run build` passes
-- [ ] `npx tsx src/lib/sfs-calculator/compute.test.ts` passes (30 assertions)
-- [ ] Smoke test: Market dropdown shows 10 markets from rate cards
-- [ ] Smoke test: Calculator inputs validate (negative values, empty fields)
-- [ ] Smoke test: Density eligibility shows correct status for pickup window > 120 min
-- [ ] Smoke test: Copy button copies summary with timestamp
-- [ ] Smoke test: Reset button restores defaults with toast
-- [ ] Smoke test: Admin rate card CRUD reflects in calculator without redeploy
+- [ ] `corepack pnpm lint` passes
+- [ ] `corepack pnpm build` passes
+- [ ] `npx tsx src/lib/sfs-calculator/compute.test.ts` passes
+- [ ] Smoke test: Upload template CSV → results appear per anchor_id
+- [ ] Smoke test: Vehicle type switch updates CPPs and costs
+- [ ] Smoke test: Copy selected / Copy all matches PDF output template
+- [ ] Smoke test: Admin rate card edits reflect in calculator without redeploy
 - [ ] Smoke test: Audit log shows `sfs_rate_card_created/updated/deleted` entries
 - [ ] Smoke test: Missing table shows friendly error state (no crash)
 
 ## Running tests
 
 ```bash
-# SFS Calculator compute engine tests (30 assertions)
+# SFS Calculator compute engine tests
 npx tsx src/lib/sfs-calculator/compute.test.ts
 ```

@@ -2,7 +2,7 @@
  * Formatting utilities for SFS Calculator results
  */
 
-import type { SfsCalculatorInputs, SfsEconomicsResult } from "./types";
+import type { SfsAnchorResult, SfsCalculatorInputs } from "./types";
 
 /** Format a number as currency (USD) */
 export function formatCurrency(value: number): string {
@@ -27,39 +27,47 @@ export function formatNumber(value: number, decimals = 0): string {
   }).format(value);
 }
 
-/** Generate copyable summary text */
-export function generateSummaryText(
-  inputs: SfsCalculatorInputs,
-  result: SfsEconomicsResult
-): string {
-  const timestamp = new Date().toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-  const densityStatus = result.density_eligible ? "✓ Eligible" : "✗ Not Eligible";
-
-  const lines = [
-    `SFS Route Economics — ${inputs.market} — ${timestamp}`,
-    ``,
-    `📦 INPUTS`,
-    `• Vehicle: ${inputs.vehicle_type}`,
-    `• Anchor packages: ${formatNumber(inputs.anchor_packages)} | Stops: ${formatNumber(inputs.anchor_stops)}`,
-    `• Satellite stores: ${formatNumber(inputs.satellite_stores)} | Packages: ${formatNumber(inputs.satellite_packages)}`,
-    `• Pickup window: ${formatNumber(inputs.pickup_window_minutes)} min`,
-    `• Route miles: ${formatNumber(inputs.pickup_route_miles + inputs.satellite_extra_miles, 1)} mi`,
-    ``,
-    `📊 OUTPUTS`,
-    `• Anchor CPP: ${formatCurrency(result.anchor_cpp)}`,
-    `• Blended CPP: ${formatCurrency(result.blended_cpp)}`,
-    `• Savings: ${formatCurrency(result.savings_absolute)} per pkg (${formatPercent(result.savings_percent)})`,
-    `• Density: ${densityStatus}`,
-    `• Drivers required: ${result.drivers_required}`,
-    ``,
-    `💰 RATE CARD`,
-    `• Base: ${formatCurrency(result.rate_card.base_cost)} | Per mile: ${formatCurrency(result.rate_card.cost_per_mile)}`,
-    `• Stop fee: ${formatCurrency(result.rate_card.stop_fee)} | Driver: ${formatCurrency(result.rate_card.driver_cost)}`,
-  ];
-
-  return lines.join("\n");
+function formatPlainNumber(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  if (Math.abs(value - Math.round(value)) < 1e-9) return String(Math.round(value));
+  return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function formatBool(value: boolean): string {
+  // Match Python-style truthiness commonly used in the PDF pseudocode.
+  return value ? "True" : "False";
+}
+
+function formatCurrencyOrNA(value: number, isAvailable: boolean): string {
+  if (!isAvailable) return "N/A";
+  return formatCurrency(value);
+}
+
+/**
+ * Generates copy text using the PDF's OUTPUT_TEMPLATE format (per anchor).
+ * Anchors are separated by a blank line when concatenated.
+ */
+export function generateOutputText(
+  inputs: SfsCalculatorInputs,
+  results: SfsAnchorResult[],
+): string {
+  return results
+    .map((result) =>
+      [
+        "Ship From Store Route Economics",
+        `Market: ${inputs.market}`,
+        `Vehicle: ${inputs.vehicle_type}`,
+        `Anchor ID: ${result.anchor_id}`,
+        `Anchor CPP: ${formatCurrencyOrNA(result.anchor_cpp, result.anchor_packages > 0)}`,
+        `Blended CPP: ${formatCurrencyOrNA(result.blended_cpp, result.total_packages > 0)}`,
+        `Drivers Required: ${formatPlainNumber(result.drivers_required)}`,
+        `Vehicles Required by Cube: ${formatPlainNumber(result.vehicles_required_by_cube)}`,
+        `Pickup Window Overlap (mins): ${formatPlainNumber(result.pickup_overlap_minutes)}`,
+        `Pickup Minutes Required: ${formatPlainNumber(result.pickup_minutes_required)}`,
+        `Window Feasible: ${formatBool(result.window_feasible)}`,
+        `Total Packages: ${formatPlainNumber(result.total_packages)}`,
+        `Total Stops: ${formatPlainNumber(result.total_stops)}`,
+      ].join("\n"),
+    )
+    .join("\n\n");
+}

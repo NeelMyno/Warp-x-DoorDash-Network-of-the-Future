@@ -10,6 +10,7 @@ export type ModuleLayoutType = "narrative" | "calculator";
 export type ModuleSlug =
   | "big-and-bulky"
   | "sfs"
+  | "network-enhancements"
   | "middle-mile-to-spokes"
   | "first-mile-to-hubs-or-spokes"
   | "returns"
@@ -54,6 +55,13 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
       defaultTab: "overview",
       allowedTabs: ["overview", "calculator"],
     },
+    navIconKey: "stack",
+  },
+  {
+    slug: "network-enhancements",
+    name: "Network enhancements",
+    description: "Hub, Spoke, and Network artifacts (diagram + SOP PDFs).",
+    layout: "narrative",
     navIconKey: "stack",
   },
   {
@@ -113,4 +121,3 @@ export function normalizeModuleTab(
   if (tab && module.tabs.allowedTabs.includes(tab)) return tab;
   return module.tabs.defaultTab;
 }
-

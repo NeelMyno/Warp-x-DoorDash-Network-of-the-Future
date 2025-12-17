@@ -141,7 +141,7 @@ export const MODULES: ModuleConfig[] = [
       progress: [
         "Identify candidate spokes and daily volume profiles.",
         "Define cutoff windows, appointments, and yard processes.",
-        "Draft exception playbooks (missed departure, late arrival, overflow).",
+        "Develop exception playbooks (missed departure, late arrival, overflow).",
       ],
       roadmap: [
         "Month 1: select lanes, set cutoffs and measurement.",
@@ -189,7 +189,7 @@ export const MODULES: ModuleConfig[] = [
       progress: [
         "Define return reason taxonomy and required data capture.",
         "Identify intake locations (stores, spokes, hubs) and processing SLAs.",
-        "Draft disposition logic and reporting requirements.",
+        "Define disposition logic and reporting requirements.",
       ],
       roadmap: [
         "Month 1: select return categories and intake locations.",
@@ -234,4 +234,3 @@ export function isModuleSectionKey(
 export function getModuleBySlug(slug: string) {
   return MODULES.find((m) => m.slug === slug) ?? null;
 }
-
