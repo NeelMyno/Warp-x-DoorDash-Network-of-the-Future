@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AlertCircle, Settings } from "lucide-react";
 
 import { SfsCalculatorInputsPanel } from "./sfs-calculator-inputs";
-import { SfsCalculatorOutputs } from "./sfs-calculator-outputs";
+import { SummaryPanel } from "./summary/SummaryPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { computeSfsEconomics } from "@/lib/sfs-calculator/compute";
 import { validateSfsInputs } from "@/lib/sfs-calculator/validate";
@@ -117,9 +117,9 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-      {/* Inputs - left column on desktop, first on mobile */}
-      <div className="order-1">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      {/* Inputs - 7 columns on desktop */}
+      <div className="order-1 lg:col-span-7">
         <SfsCalculatorInputsPanel
           inputs={inputs}
           onChange={setInputs}
@@ -129,9 +129,9 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
         />
       </div>
 
-      {/* Outputs - right column on desktop, second on mobile */}
-      <div className="order-2 lg:sticky lg:top-4 lg:self-start">
-        <SfsCalculatorOutputs
+      {/* Summary - 5 columns on desktop, sticky */}
+      <div className="order-2 lg:col-span-5 lg:sticky lg:top-20 lg:self-start">
+        <SummaryPanel
           inputs={inputs}
           result={result}
           error={error}

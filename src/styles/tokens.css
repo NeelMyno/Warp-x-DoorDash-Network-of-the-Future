@@ -50,24 +50,57 @@
 
   /* Semantic (dark-only V1) */
   --warp-bg: var(--warp-neutral-10);
-  --warp-surface-1: #161617;
-  --warp-surface-2: #1c1c1e;
-  --warp-surface-3: #232325;
+  --warp-surface-1: #19191b;
+  --warp-surface-2: #202023;
+  --warp-surface-3: #2a2a2e;
 
-  --warp-border: rgba(245, 245, 245, 0.06);
-  --warp-border-hover: rgba(245, 245, 245, 0.12);
-  --warp-border-strong: rgba(245, 245, 245, 0.16);
+  --warp-border: rgba(245, 245, 245, 0.10);
+  --warp-border-hover: rgba(245, 245, 245, 0.16);
+  --warp-border-strong: rgba(245, 245, 245, 0.24);
 
-  --warp-text-1: var(--warp-neutral-1);
-  --warp-text-2: var(--warp-neutral-3);
-  --warp-muted: var(--warp-neutral-5);
-  --warp-disabled: rgba(245, 245, 245, 0.35);
+  --warp-text-1: #fafafa;
+  --warp-text-2: #d4d4d4;
+  --warp-muted: #a3a3a3;
+  --warp-disabled: rgba(245, 245, 245, 0.38);
 
-  --warp-accent: var(--warp-green-7);
-  --warp-accent-hover: var(--warp-green-6);
-  --warp-accent-muted: rgba(0, 255, 51, 0.14);
+  /* Accent ramp — controlled chroma for premium feel */
+  --warp-accent: hsl(135, 100%, 50%);
+  --warp-accent-strong: hsl(142, 85%, 58%);
+  --warp-accent-soft: hsla(142, 76%, 46%, 0.12);
+  --warp-accent-muted: hsla(142, 76%, 46%, 0.22);
+  --warp-accent-contrast: #071109;
+  --warp-accent-hover: hsl(135, 100%, 56%);
   --warp-accent-ink: #071109;
-  --warp-ring: rgba(0, 255, 51, 0.62);
+  --warp-ring: hsla(142, 76%, 46%, 0.55);
+
+  /* Semantic success/warning/danger — slightly more saturated */
+  --warp-success: hsl(142, 76%, 46%);
+  --warp-success-strong: hsl(142, 72%, 52%);
+  --warp-success-soft: hsla(142, 76%, 46%, 0.14);
+  --warp-success-muted: hsla(142, 76%, 46%, 0.24);
+  --warp-warning: hsl(38, 92%, 52%);
+  --warp-warning-strong: hsl(38, 92%, 58%);
+  --warp-warning-soft: hsla(38, 92%, 52%, 0.14);
+  --warp-warning-muted: hsla(38, 92%, 52%, 0.28);
+  --warp-danger: hsl(0, 84%, 62%);
+  --warp-danger-strong: hsl(0, 84%, 68%);
+  --warp-danger-soft: hsla(0, 84%, 62%, 0.14);
+
+  /* Info — for neutral callouts */
+  --warp-info: hsl(199, 89%, 58%);
+  --warp-info-soft: hsla(199, 89%, 58%, 0.12);
+
+  /* Focus / Error tokens for form fields */
+  --warp-focus-ring: hsla(142, 76%, 46%, 0.50);
+  --warp-focus-ring-danger: hsla(0, 84%, 62%, 0.50);
+  --warp-field-error: hsl(0, 84%, 62%);
+  --warp-field-error-soft: hsla(0, 84%, 62%, 0.12);
+
+  /* Data viz colors — distinct hues with higher chroma */
+  --warp-viz-pickup: hsl(199, 89%, 60%);
+  --warp-viz-pickup-fill: hsla(199, 89%, 60%, 0.70);
+  --warp-viz-hubspoke: hsl(263, 70%, 68%);
+  --warp-viz-hubspoke-fill: hsla(263, 70%, 68%, 0.62);
 
   /* Muted shadows — rely on borders for separation, minimal drop shadow */
   --warp-shadow-elev-1: none;
@@ -76,23 +109,23 @@
   --warp-shadow-elev-4: 0 8px 32px rgba(0, 0, 0, 0.28);
   --warp-glow-accent: 0 0 0 1px rgba(0, 255, 51, 0.15);
 
-  /* Muted background gradient — very subtle green wash, calmer vignette */
+  /* Muted background gradient — subtle green wash with slightly more presence */
   --warp-bg-gradient: radial-gradient(
       1000px 720px at 18% -12%,
-      rgba(0, 255, 51, 0.04),
+      rgba(0, 255, 51, 0.055),
       transparent 60%
     ),
     radial-gradient(
       900px 720px at 92% 6%,
-      rgba(0, 255, 51, 0.02),
+      rgba(0, 255, 51, 0.03),
       transparent 56%
     ),
     radial-gradient(
       1200px 900px at 50% 120%,
-      rgba(0, 0, 0, 0.35),
+      rgba(0, 0, 0, 0.38),
       transparent 56%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 46%),
     var(--warp-bg);
 
   /* Accent bar: near-solid with barely perceptible gradient */
