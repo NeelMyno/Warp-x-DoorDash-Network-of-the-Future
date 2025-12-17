@@ -120,15 +120,24 @@ export async function NetworkEnhancementsModule({
         initialFocus={panel === "pdf" ? "pdf" : "reset"}
         left={
           <DiagramViewer
+            assetId={view?.diagram.assetId ?? null}
             url={view?.diagram.url ?? null}
+            expiresAt={view?.diagram.expiresAt ?? null}
             filename={diagramFilename}
+            title={view?.diagramTitle}
+            alt={view?.diagramAlt}
+            caption={view?.diagramCaption}
             isAdmin={role === "admin"}
           />
         }
         right={
           <PdfViewer
+            assetId={view?.pdf.assetId ?? null}
             url={view?.pdf.url ?? null}
+            expiresAt={view?.pdf.expiresAt ?? null}
             filename={pdfFilename}
+            title={view?.pdfTitle}
+            caption={view?.pdfCaption}
             isAdmin={role === "admin"}
           />
         }
