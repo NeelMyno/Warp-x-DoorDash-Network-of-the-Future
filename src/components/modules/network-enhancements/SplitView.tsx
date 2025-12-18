@@ -230,7 +230,7 @@ export function SplitView({
         className,
       )}
     >
-      <header className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 border-b border-border/50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -289,7 +289,7 @@ export function SplitView({
         </div>
       </header>
 
-      <div className="p-4">
+      <div className="p-3">
         <div className={cn("grid gap-4", forceStacked ? "md:grid" : "md:hidden")}>
           <div id={leftId} className="min-h-[240px]">
             {left}

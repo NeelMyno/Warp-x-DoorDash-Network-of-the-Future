@@ -474,14 +474,14 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
             </button>
             {assumptionsExpanded ? (
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {[
-                  { key: "miles_to_hub_or_spoke", label: "Miles to hub/spoke" },
-                  { key: "avg_routing_time_per_stop_minutes", label: "Avg routing time / stop (min)" },
-                  { key: "default_service_time_minutes", label: "Default service time (min)" },
-                  { key: "max_driver_time_minutes", label: "Max driver time (min)", locked: true, lockedValue: 480 },
-                  { key: "avg_speed_mph", label: "Avg speed (mph)" },
-                  { key: "default_avg_cubic_inches_per_package", label: "Default avg cube / package (cu in)" },
-                ].map((field) => {
+	                {[
+	                  { key: "miles_to_hub_or_spoke", label: "Miles to hub/spoke" },
+	                  { key: "avg_routing_time_per_stop_minutes", label: "Time between stops" },
+	                  { key: "default_service_time_minutes", label: "Time per stop" },
+	                  { key: "max_driver_time_minutes", label: "Max driver time (min)", locked: true, lockedValue: 480 },
+	                  { key: "avg_speed_mph", label: "Avg speed (mph)" },
+	                  { key: "default_avg_cubic_inches_per_package", label: "Default avg cube / package (cu in)" },
+	                ].map((field) => {
                   const key = field.key as keyof SfsCalculatorInputs;
                   const err = validationErrors[key as string];
                   const value = inputs[key];

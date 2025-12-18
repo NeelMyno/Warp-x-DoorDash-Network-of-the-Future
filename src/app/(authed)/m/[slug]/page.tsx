@@ -35,13 +35,11 @@ export default async function ModulePage({
     const normalizedSub =
       sub === "spoke" || sub === "network" ? sub : "hub";
     if (normalizedSub === "network") {
-      const normalizedPanel =
-        panel === "highlights" || panel === "cost" ? panel : "pdf";
       const shouldRedirect =
-        sub !== normalizedSub || panel !== normalizedPanel || variant;
+        sub !== normalizedSub || !!variant || !!panel;
       if (shouldRedirect) {
         redirect(
-          `/m/${slug}?sub=${normalizedSub}&panel=${encodeURIComponent(normalizedPanel)}`,
+          `/m/${slug}?sub=${normalizedSub}`,
         );
       }
     } else {
@@ -61,7 +59,6 @@ export default async function ModulePage({
         role={role}
         subParam={sub}
         variantParam={variant}
-        panelParam={panel}
         supabase={supabase}
       />
     );

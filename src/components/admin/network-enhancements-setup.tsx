@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { getNetworkEnhancementsInsights } from "@/lib/network-enhancements/get-insights";
 import {
   parseNetworkCostModel,
   parseNetworkThresholds,
   type NetworkCostModel,
   type NetworkThresholds,
 } from "@/lib/network-enhancements/schema";
+import type { NetworkInsights } from "@/lib/network-enhancements/insights-schema";
 import { ContentPanel } from "@/components/panels/ContentPanel";
 import { NetworkEnhancementsEditor } from "@/components/admin/network-enhancements/NetworkEnhancementsEditor";
 
@@ -16,6 +18,11 @@ export type NetworkEnhancementsAdminRow = {
   diagramFilename: string | null;
   pdfAssetId: string | null;
   pdfFilename: string | null;
+  diagramTitle: string | null;
+  diagramAlt: string | null;
+  diagramCaption: string | null;
+  pdfTitle: string | null;
+  pdfCaption: string | null;
   networkHighlightsMd: string | null;
   networkCoverageMd: string | null;
   networkThresholds: NetworkThresholds | null;
@@ -42,6 +49,11 @@ export async function NetworkEnhancementsSetupSection() {
     variant: string | null;
     diagram_asset_id: string | null;
     pdf_asset_id: string | null;
+    diagram_title?: string | null;
+    diagram_alt?: string | null;
+    diagram_caption?: string | null;
+    pdf_title?: string | null;
+    pdf_caption?: string | null;
     network_highlights_md: string | null;
     network_thresholds: unknown;
     network_coverage_md: string | null;
@@ -57,7 +69,7 @@ export async function NetworkEnhancementsSetupSection() {
     const { data, error } = await supabase
       .from("network_enhancements_views")
       .select(
-        "id, sub, variant, diagram_asset_id, pdf_asset_id, network_highlights_md, network_thresholds, network_coverage_md, network_cost_model, updated_at",
+        "id, sub, variant, diagram_asset_id, pdf_asset_id, diagram_title, diagram_alt, diagram_caption, pdf_title, pdf_caption, network_highlights_md, network_thresholds, network_coverage_md, network_cost_model, updated_at",
       );
 
     if (error) {
@@ -104,14 +116,23 @@ export async function NetworkEnhancementsSetupSection() {
     try {
       const { data } = await supabase
         .from("assets")
-        .select("id, filename")
+        .select("id, filename, content_type")
         .in("id", assetIds);
-      for (const row of (data ?? []) as Array<{ id: string; filename: string }>) {
+      for (const row of (data ?? []) as Array<{ id: string; filename: string; content_type?: string | null }>) {
         assetMap.set(row.id, { filename: row.filename ?? null });
       }
     } catch {
       // ignore filename lookup failures
     }
+  }
+
+  let networkInsights: NetworkInsights | null = null;
+  let insightsError: string | null = null;
+  const networkViewRow = rows.find((r) => r.sub === "network") ?? null;
+  if (networkViewRow?.id) {
+    const result = await getNetworkEnhancementsInsights({ viewId: String(networkViewRow.id), supabase });
+    if (result.ok) networkInsights = result.insights;
+    else insightsError = result.error;
   }
 
   const normalized: NetworkEnhancementsAdminRow[] = rows
@@ -128,6 +149,11 @@ export async function NetworkEnhancementsSetupSection() {
         diagramFilename: assetFilenameById(r.diagram_asset_id, assetMap),
         pdfAssetId: typeof r.pdf_asset_id === "string" ? r.pdf_asset_id : null,
         pdfFilename: assetFilenameById(r.pdf_asset_id, assetMap),
+        diagramTitle: typeof r.diagram_title === "string" ? r.diagram_title : null,
+        diagramAlt: typeof r.diagram_alt === "string" ? r.diagram_alt : null,
+        diagramCaption: typeof r.diagram_caption === "string" ? r.diagram_caption : null,
+        pdfTitle: typeof r.pdf_title === "string" ? r.pdf_title : null,
+        pdfCaption: typeof r.pdf_caption === "string" ? r.pdf_caption : null,
         networkHighlightsMd:
           typeof r.network_highlights_md === "string" ? r.network_highlights_md : null,
         networkCoverageMd:
@@ -148,6 +174,11 @@ export async function NetworkEnhancementsSetupSection() {
       return av.localeCompare(bv);
     });
 
-  return <NetworkEnhancementsEditor initialRows={normalized} />;
+  return (
+    <NetworkEnhancementsEditor
+      initialRows={normalized}
+      initialNetworkInsights={networkInsights}
+      insightsError={insightsError}
+    />
+  );
 }
-

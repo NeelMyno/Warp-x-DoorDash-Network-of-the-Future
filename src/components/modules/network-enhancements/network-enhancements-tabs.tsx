@@ -7,7 +7,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type NetworkEnhancementsSubKey = "hub" | "spoke" | "network";
 export type NetworkEnhancementsVariantKey = "example" | "future";
-export type NetworkEnhancementsPanelKey = "pdf" | "highlights" | "cost";
 
 function normalizeSub(value: unknown): NetworkEnhancementsSubKey {
   if (value === "spoke") return "spoke";
@@ -20,12 +19,6 @@ function normalizeVariant(value: unknown): NetworkEnhancementsVariantKey {
   return "example";
 }
 
-function normalizePanel(value: unknown): NetworkEnhancementsPanelKey {
-  if (value === "highlights") return "highlights";
-  if (value === "cost") return "cost";
-  return "pdf";
-}
-
 function nextUrl(pathname: string, params: URLSearchParams) {
   const qs = params.toString();
   return qs ? `${pathname}?${qs}` : pathname;
@@ -34,11 +27,9 @@ function nextUrl(pathname: string, params: URLSearchParams) {
 export function NetworkEnhancementsTabs({
   sub,
   variant,
-  panel,
 }: {
   sub?: string;
   variant?: string;
-  panel?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -46,7 +37,6 @@ export function NetworkEnhancementsTabs({
 
   const activeSub = normalizeSub(sub);
   const activeVariant = normalizeVariant(variant);
-  const activePanel = normalizePanel(panel);
 
   const setParams = React.useCallback(
     (mutate: (params: URLSearchParams) => void) => {
@@ -68,7 +58,7 @@ export function NetworkEnhancementsTabs({
 
             if (nextSub === "network") {
               params.delete("variant");
-              if (!params.get("panel")) params.set("panel", "pdf");
+              params.delete("panel");
             } else {
               if (!params.get("variant")) params.set("variant", "example");
               params.delete("panel");
@@ -90,52 +80,30 @@ export function NetworkEnhancementsTabs({
       </Tabs>
 
       {activeSub === "hub" || activeSub === "spoke" ? (
-        <Tabs
-          value={activeVariant}
-          onValueChange={(next) => {
-            const nextVariant = normalizeVariant(next);
-            setParams((params) => {
-              params.set("sub", activeSub);
-              params.set("variant", nextVariant);
-              params.delete("panel");
-            });
-          }}
-        >
-          <TabsList className="h-9">
-            <TabsTrigger value="example" className="text-xs">
-              Example
-            </TabsTrigger>
-            <TabsTrigger value="future" className="text-xs">
-              Future (Automation)
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      ) : (
-        <Tabs
-          value={activePanel}
-          onValueChange={(next) => {
-            const nextPanel = normalizePanel(next);
-            setParams((params) => {
-              params.set("sub", "network");
-              params.delete("variant");
-              params.set("panel", nextPanel);
-            });
-          }}
-        >
-          <TabsList className="h-9">
-            <TabsTrigger value="pdf" className="text-xs">
-              PDF
-            </TabsTrigger>
-            <TabsTrigger value="highlights" className="text-xs">
-              Highlights
-            </TabsTrigger>
-            <TabsTrigger value="cost" className="text-xs">
-              Cost model
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      )}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="text-xs text-muted-foreground/70">|</div>
+          <Tabs
+            value={activeVariant}
+            onValueChange={(next) => {
+              const nextVariant = normalizeVariant(next);
+              setParams((params) => {
+                params.set("sub", activeSub);
+                params.set("variant", nextVariant);
+                params.delete("panel");
+              });
+            }}
+          >
+            <TabsList className="h-9">
+              <TabsTrigger value="example" className="text-xs">
+                Example
+              </TabsTrigger>
+              <TabsTrigger value="future" className="text-xs">
+                Future (Automation)
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      ) : null}
     </div>
   );
 }
-

@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -138,7 +140,7 @@ export function DiagramViewer({
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 px-3 py-2">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground">Diagram</div>
           <div className="mt-0.5 truncate text-sm font-medium text-foreground">
@@ -185,11 +187,11 @@ export function DiagramViewer({
         </div>
       </div>
 
-      <div className="flex-1 p-4">
-        <div className="relative grid h-full place-items-center overflow-hidden rounded-2xl border border-border/70 bg-background/20">
+      <div className="flex-1 p-2">
+        <div className="relative grid h-full place-items-center overflow-hidden rounded-xl bg-background/12">
           {!loaded ? (
             <div className="absolute inset-0 grid place-items-center">
-              <div className="h-[68%] w-[72%] animate-pulse rounded-2xl border border-border/60 bg-muted/15" />
+              <div className="h-[68%] w-[72%] animate-pulse rounded-xl border border-border/50 bg-muted/10" />
             </div>
           ) : null}
 
@@ -210,9 +212,9 @@ export function DiagramViewer({
               src={signed.url}
               alt={resolvedAlt}
               onLoad={() => setLoaded(true)}
-              className="absolute left-1/2 top-1/2 block max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
+              className="absolute inset-0 block h-full w-full object-contain"
               style={{
-                transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) scale(${scale})`,
+                transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
                 transformOrigin: "center",
                 transition: isActivePan ? "none" : "transform 120ms ease",
               }}
@@ -221,7 +223,7 @@ export function DiagramViewer({
         </div>
 
         {caption?.trim() ? (
-          <div className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          <div className="mt-2 px-1 text-xs leading-relaxed text-muted-foreground">
             {caption.trim()}
           </div>
         ) : null}

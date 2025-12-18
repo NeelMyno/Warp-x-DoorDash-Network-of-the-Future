@@ -52,6 +52,7 @@ export function PdfViewer({
   const [failed, setFailed] = React.useState(false);
   const [timedOut, setTimedOut] = React.useState(false);
   const [embedKey, setEmbedKey] = React.useState(0);
+  const timeoutRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     setLoaded(false);
@@ -62,9 +63,18 @@ export function PdfViewer({
 
   React.useEffect(() => {
     if (!signed.url) return;
-    const handle = window.setTimeout(() => setTimedOut(true), 10_000);
-    return () => window.clearTimeout(handle);
-  }, [embedKey, signed.url]);
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    if (loaded || failed) return;
+
+    timeoutRef.current = window.setTimeout(() => {
+      setTimedOut(true);
+    }, 20_000);
+
+    return () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    };
+  }, [embedKey, failed, loaded, signed.url]);
 
   if (!signed.url) {
     return (
@@ -84,7 +94,7 @@ export function PdfViewer({
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 px-3 py-2">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground">PDF</div>
           <div className="mt-0.5 truncate text-sm font-medium text-foreground">
@@ -115,12 +125,12 @@ export function PdfViewer({
         </div>
       </div>
 
-      <div className="relative flex-1 p-4">
-        <div className="absolute inset-4 overflow-hidden rounded-2xl border border-border/70 bg-background/20">
+      <div className="relative flex-1 p-2">
+        <div className="relative h-full overflow-hidden rounded-xl bg-background/12">
           {!loaded && !failed && !timedOut ? (
             <div className="grid h-full place-items-center">
               <div className="space-y-2 text-center">
-                <div className="h-10 w-56 animate-pulse rounded-xl border border-border/60 bg-muted/15" />
+                <div className="h-10 w-56 animate-pulse rounded-xl border border-border/50 bg-muted/10" />
                 <div className="text-xs text-muted-foreground">Loading SOP…</div>
               </div>
             </div>
@@ -151,19 +161,24 @@ export function PdfViewer({
             key={embedKey}
             title={displayTitle}
             src={signed.url}
-            className={cn(
-              "h-full w-full",
-              failed || timedOut ? "hidden" : "block",
-              loaded ? "opacity-100" : "opacity-0",
-            )}
-            onLoad={() => setLoaded(true)}
-            onError={() => setFailed(true)}
+            className={cn("h-full w-full", failed || timedOut ? "hidden" : "block")}
+            onLoad={() => {
+              if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+              setTimedOut(false);
+              setLoaded(true);
+            }}
+            onError={() => {
+              if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+              setFailed(true);
+            }}
           />
         </div>
       </div>
 
       {caption?.trim() ? (
-        <div className="px-4 pb-4 text-xs leading-relaxed text-muted-foreground">
+        <div className="px-3 pb-3 text-xs leading-relaxed text-muted-foreground">
           {caption.trim()}
         </div>
       ) : null}
