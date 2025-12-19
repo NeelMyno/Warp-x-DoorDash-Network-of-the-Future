@@ -1,5 +1,4 @@
 import type {
-  DistanceAssumptions,
   SfsAnchorResult,
   SfsCalculatorInputs,
   SfsDensityTier,
@@ -94,13 +93,11 @@ export function computeSatelliteImpacts(args: {
   anchorStops: SfsStop[];
   rateCard: SfsRateCard;
   densityTiers: SfsDensityTier[];
-  distanceAssumptions?: DistanceAssumptions;
 }): { fullResult: SfsAnchorResult; summary: SfsSatelliteImpactSummary } {
-  const { inputs, anchorId, anchorStops, rateCard, densityTiers, distanceAssumptions } = args;
+  const { inputs, anchorId, anchorStops, rateCard, densityTiers } = args;
 
   const [fullResult] = computeSfsEconomics(inputs, anchorStops, rateCard, {
     densityTiers,
-    distanceAssumptions,
   });
   if (!fullResult) {
     throw new Error(`No result for anchor_id=${anchorId}`);
@@ -125,7 +122,6 @@ export function computeSatelliteImpacts(args: {
     const stopsWithout = anchorStops.filter((_, i) => i !== idx);
     const [withoutResult] = computeSfsEconomics(inputs, stopsWithout, rateCard, {
       densityTiers,
-      distanceAssumptions,
     });
     const costWithout = clampNonNegative(withoutResult?.blended_cost ?? 0);
     const incremental = clampNonNegative(costWithout - discounted_blended_cost);

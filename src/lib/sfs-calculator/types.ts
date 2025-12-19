@@ -39,25 +39,7 @@ export const SFS_STORES_UPLOAD_OPTIONAL_HEADERS = [
   "service_time_minutes",
 ] as const;
 
-/** Distance mode for computing satellite distances to anchor. */
-export type DistanceMode = "per_store" | "average" | "tier_mix";
 
-/** Tier mix percentages (must sum to 100). */
-export type TierMixShares = {
-  le10: number; // <= 10 miles
-  le20: number; // > 10 and <= 20 miles
-  le30: number; // > 20 and <= 30 miles
-  gt30: number; // > 30 miles
-};
-
-/** Distance assumptions for computing density discounts without store coordinates. */
-export type DistanceAssumptions = {
-  mode: DistanceMode;
-  /** Average distance in miles (used when mode = "average"). */
-  avgMiles?: number;
-  /** Tier mix percentages (used when mode = "tier_mix"). */
-  tierMix?: TierMixShares;
-};
 
 /** Rate card row from database (v2: one row per vehicle type). */
 export interface SfsRateCard {

@@ -4,8 +4,7 @@ import type { ModuleRegistryEntry } from "@/lib/modules/registry";
 import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
 import type { SfsConfigError } from "../sfs/sfs-calculator";
 import { NarrativeModuleLayout } from "./narrative-module-layout";
-import { SfsModuleLayout } from "../sfs/sfs-module-layout";
-import type { SfsTabKey } from "../sfs/sfs-tabs";
+import { SfsCalculatorModuleLayout } from "../sfs/sfs-calculator-module-layout";
 
 export interface ModuleSection {
   key: string;
@@ -42,7 +41,6 @@ export function resolveModuleLayout({
   title,
   description,
   sections,
-  activeTab,
   rateCards = [],
   densityTiers,
   configError,
@@ -51,13 +49,11 @@ export function resolveModuleLayout({
 }: ResolveModuleLayoutProps): React.ReactNode {
   switch (moduleEntry.layout) {
     case "calculator":
-      // Currently only SFS uses calculator layout
+      // SFS Calculator standalone module
       return (
-        <SfsModuleLayout
+        <SfsCalculatorModuleLayout
           title={title}
           description={description}
-          sections={sections}
-          activeTab={(activeTab ?? "overview") as SfsTabKey}
           rateCards={rateCards}
           densityTiers={densityTiers}
           configError={configError}

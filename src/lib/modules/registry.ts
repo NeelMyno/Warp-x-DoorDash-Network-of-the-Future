@@ -10,6 +10,7 @@ export type ModuleLayoutType = "narrative" | "calculator";
 export type ModuleSlug =
   | "big-and-bulky"
   | "sfs"
+  | "sfs-calculator"
   | "network-enhancements"
   | "middle-mile-to-spokes"
   | "first-mile-to-hubs-or-spokes"
@@ -50,12 +51,15 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     slug: "sfs",
     name: "SFS",
     description: "Ship-from-store fulfillment and inventory-aware routing.",
-    layout: "calculator",
-    tabs: {
-      defaultTab: "overview",
-      allowedTabs: ["overview", "calculator"],
-    },
+    layout: "narrative",
     navIconKey: "stack",
+  },
+  {
+    slug: "sfs-calculator",
+    name: "SFS Calculator",
+    description: "Upload stores and estimate density savings.",
+    layout: "calculator",
+    navIconKey: "calculator",
   },
   {
     slug: "network-enhancements",

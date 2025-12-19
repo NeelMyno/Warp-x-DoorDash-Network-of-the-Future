@@ -4,7 +4,7 @@ import {
   MODULE_SECTIONS,
   type ModuleSectionKey,
 } from "@/config/modules";
-import { getModuleBySlug, normalizeModuleTab } from "@/lib/modules/registry";
+import { getModuleBySlug } from "@/lib/modules/registry";
 import { Blocks, isBlocksEmpty } from "@/components/content/blocks";
 import { NetworkEnhancementsModule } from "@/components/modules/network-enhancements/NetworkEnhancementsModule";
 import { resolveModuleLayout } from "@/components/modules/layouts/resolve-module-layout";
@@ -29,9 +29,19 @@ export default async function ModulePage({
   const { tab, sub, variant, panel } = await searchParams;
   const { role, supabase } = await requireUser();
 
+  // Redirect old SFS calculator URL to new module
+  if (slug === "sfs" && tab === "calculator") {
+    redirect("/m/sfs-calculator");
+  }
+
   // Lookup module in registry
   const moduleEntry = getModuleBySlug(slug);
   if (!moduleEntry) notFound();
+
+  // Access control: non-admins can ONLY access sfs-calculator
+  if (role !== "admin" && slug !== "sfs-calculator") {
+    redirect("/m/sfs-calculator");
+  }
 
   if (slug === "network-enhancements") {
     const normalizedSub =
@@ -118,7 +128,6 @@ export default async function ModulePage({
     title: resolved.moduleMeta.title,
     description: resolved.moduleMeta.description,
     sections,
-    activeTab: normalizeModuleTab(moduleEntry, tab),
     rateCards,
     densityTiers,
     configError,

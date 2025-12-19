@@ -13,6 +13,8 @@ import { IconGrid, IconShield, IconStack, IconUser } from "@/components/icons";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   Building2,
+  Calculator,
+  Lock,
   Network,
   Package,
   RefreshCw,
@@ -20,10 +22,17 @@ import {
   RotateCcw,
   ShoppingBag,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const MODULE_ICON_BY_SLUG = {
   "big-and-bulky": Package,
   sfs: ShoppingBag,
+  "sfs-calculator": Calculator,
   "network-enhancements": Network,
   "middle-mile-to-spokes": Route,
   "first-mile-to-hubs-or-spokes": Building2,
@@ -69,6 +78,38 @@ function SidebarItem({
   );
 }
 
+function LockedSidebarItem({
+  label,
+  icon,
+}: {
+  label: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            aria-disabled="true"
+            className={cn(
+              "group relative flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-sm opacity-50",
+            )}
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-background/25 text-muted-foreground">
+              {icon}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
+            <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <p className="text-xs">Admin only</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 export function SidebarNav({
   role,
   modules,
@@ -104,19 +145,30 @@ export function SidebarNav({
           <div className="space-y-1">
             {modules.map((m) => {
               const Icon = MODULE_ICON_BY_SLUG[m.slug as keyof typeof MODULE_ICON_BY_SLUG];
+              const isLocked = role !== "admin" && m.slug !== "sfs-calculator";
+              const iconNode = Icon ? (
+                <Icon className="h-4 w-4" strokeWidth={1.75} />
+              ) : (
+                <IconStack className="h-4 w-4" />
+              );
+
+              if (isLocked) {
+                return (
+                  <LockedSidebarItem
+                    key={m.slug}
+                    label={m.name}
+                    icon={iconNode}
+                  />
+                );
+              }
+
               return (
                 <SidebarItem
                   key={m.slug}
                   href={`/m/${m.slug}`}
                   label={m.name}
-                  icon={
-                    Icon ? (
-                      <Icon className="h-4 w-4" strokeWidth={1.75} />
-                    ) : (
-                      <IconStack className="h-4 w-4" />
-                    )
-                  }
-                  active={pathname.startsWith(`/m/${m.slug}`)}
+                  icon={iconNode}
+                  active={pathname === `/m/${m.slug}` || pathname.startsWith(`/m/${m.slug}/`)}
                 />
               );
             })}

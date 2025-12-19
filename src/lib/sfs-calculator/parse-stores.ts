@@ -7,14 +7,22 @@ import {
   type StopType,
 } from "./types";
 
+/** Missing distance_miles error for a satellite row. */
+export type MissingDistanceError = {
+  row: number;
+  anchor_id: string;
+  store_name?: string;
+  store_id?: string;
+};
+
 export type StoresUploadParseOk = {
   ok: true;
   delimiter: "," | "\t";
   rows: SfsStoreUploadRow[];
   stops: SfsStop[];
   errors: SfsStoreUploadError[];
-  /** True if CSV has distance_miles column with values. */
-  hasDistanceMiles: boolean;
+  /** Satellite rows missing distance_miles (blocking error if non-empty). */
+  missingDistanceErrors: MissingDistanceError[];
 };
 
 export type StoresUploadParseError = {
@@ -170,10 +178,10 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
 
   const hasDistanceMilesColumn = headerIndex.has("distance_miles");
   const hasStoreIdColumn = headerIndex.has("store_id");
-  let hasAnyDistanceMiles = false;
 
   const rows: SfsStoreUploadRow[] = [];
   const stops: SfsStop[] = [];
+  const missingDistanceErrors: MissingDistanceError[] = [];
 
   for (let r = 1; r < matrix.length; r++) {
     const rawRow = matrix[r];
@@ -200,9 +208,6 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     const distance_miles = hasDistanceMilesColumn
       ? parseOptionalNumber(get("distance_miles"))
       : null;
-    if (distance_miles !== null && distance_miles >= 0) {
-      hasAnyDistanceMiles = true;
-    }
 
     const avgCube = headerIndex.has("avg_cubic_inches_per_package")
       ? parseOptionalNumber(get("avg_cubic_inches_per_package"))
@@ -273,6 +278,16 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
 
     rows.push(row);
 
+    // Validate distance_miles for Satellite rows (required)
+    if (stop_type === "Satellite" && (distance_miles === null || distance_miles < 0)) {
+      missingDistanceErrors.push({
+        row: rowNumber,
+        anchor_id,
+        store_name: store_name || undefined,
+        store_id: store_id || undefined,
+      });
+    }
+
     if (
       route_id &&
       anchor_id &&
@@ -325,7 +340,7 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     rows,
     stops,
     errors,
-    hasDistanceMiles: hasAnyDistanceMiles,
+    missingDistanceErrors,
   };
 }
 

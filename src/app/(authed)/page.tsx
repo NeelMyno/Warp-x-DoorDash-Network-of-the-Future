@@ -18,14 +18,18 @@ export default async function PortalPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {MODULE_REGISTRY.map((m) => (
-          <ModuleCard
-            key={m.slug}
-            title={m.name}
-            description={m.description}
-            href={`/m/${m.slug}`}
-          />
-        ))}
+        {MODULE_REGISTRY.map((m) => {
+          const isLocked = role !== "admin" && m.slug !== "sfs-calculator";
+          return (
+            <ModuleCard
+              key={m.slug}
+              title={m.name}
+              description={m.description}
+              href={`/m/${m.slug}`}
+              locked={isLocked}
+            />
+          );
+        })}
         {role === "admin" ? (
           <ModuleCard
             title="Admin"

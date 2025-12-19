@@ -1,11 +1,11 @@
 /**
  * SFS Route Economics Calculator - Compute Engine
  * V3: Distance-band density discounts (SFS calculator 3.pdf spec via prompt).
- * V4: Removed store location DB dependency - uses distance_miles from CSV or distance assumptions.
+ * V4: Removed store location DB dependency - uses distance_miles from CSV only.
+ * V5: Simplified - distance_miles required for satellites (no avg/tier_mix fallback).
  */
 
 import type {
-  DistanceAssumptions,
   SfsCalculatorInputs,
   SfsDensityTier,
   SfsRateCard,
@@ -34,12 +34,6 @@ export function getVehicleCubicCapacity(vehicleType: VehicleType): number {
   return VEHICLE_CUBIC_CAPACITY[vehicleType];
 }
 
-/** Default distance assumptions: average 15 miles. */
-export const DEFAULT_DISTANCE_ASSUMPTIONS: DistanceAssumptions = {
-  mode: "average",
-  avgMiles: 15,
-};
-
 function ceilDiv(numerator: number, denominator: number): number {
   if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
     return 0;
@@ -52,14 +46,10 @@ function sum(values: number[]): number {
 }
 
 /**
- * Computes distance for a satellite stop based on distance assumptions.
- * Priority: 1) CSV distance_miles, 2) average miles, 3) tier mix (returns 0, handled separately).
+ * Gets distance_miles from a stop. For satellites, should always be present (validated at upload).
+ * Returns 0 for anchors or if missing.
  */
-function getDistanceForStop(
-  stop: SfsStop,
-  distanceAssumptions: DistanceAssumptions,
-): number {
-  // If CSV has distance_miles, use it
+function getDistanceForStop(stop: SfsStop): number {
   if (
     typeof stop.distance_miles === "number" &&
     Number.isFinite(stop.distance_miles) &&
@@ -67,20 +57,12 @@ function getDistanceForStop(
   ) {
     return stop.distance_miles;
   }
-
-  // If mode is average, use avgMiles
-  if (distanceAssumptions.mode === "average" && typeof distanceAssumptions.avgMiles === "number") {
-    return distanceAssumptions.avgMiles;
-  }
-
-  // For tier_mix mode, we don't assign individual distances - handled separately
-  // Return 0 as placeholder (tier distribution is computed from shares)
   return 0;
 }
 
 /**
  * Computes per-anchor results for Ship From Store Route Economics.
- * V4: Uses distance_miles from CSV or distance assumptions (no store location DB required).
+ * V5: Uses distance_miles from CSV only (required for satellites).
  */
 export function computeSfsEconomics(
   inputs: SfsCalculatorInputs,
@@ -88,7 +70,6 @@ export function computeSfsEconomics(
   rateCard: SfsRateCard,
   options?: {
     densityTiers?: SfsDensityTier[];
-    distanceAssumptions?: DistanceAssumptions;
   },
 ): SfsAnchorResult[] {
   const base_fee = rateCard.base_fee;
@@ -99,8 +80,6 @@ export function computeSfsEconomics(
   const densityTiersRaw = options?.densityTiers ?? DEFAULT_DENSITY_TIERS;
   const tierValidation = validateDensityTiers(densityTiersRaw);
   const densityTiers = tierValidation.ok ? densityTiersRaw : DEFAULT_DENSITY_TIERS;
-
-  const distanceAssumptions = options?.distanceAssumptions ?? DEFAULT_DISTANCE_ASSUMPTIONS;
 
   const anchors = new Map<string, SfsStop[]>();
   for (const stop of stops) {
@@ -134,7 +113,7 @@ export function computeSfsEconomics(
         };
       }
 
-      const distance = getDistanceForStop(s, distanceAssumptions);
+      const distance = getDistanceForStop(s);
       const tier = tierForDistance(distance, densityTiers);
 
       return {
@@ -146,41 +125,12 @@ export function computeSfsEconomics(
       };
     });
 
-    // Compute density discount based on mode
-    let density: ReturnType<typeof computeDensityDiscount>;
+    // Compute density discount from per-stop distance_miles
+    const satelliteDistances = stops_with_distance
+      .filter((s) => s.stop_type === "Satellite")
+      .map((s) => ({ packages: s.packages, distance_to_anchor_miles: s.distance_to_anchor_miles }));
 
-    if (distanceAssumptions.mode === "tier_mix" && distanceAssumptions.tierMix) {
-      // Tier mix mode: compute discount directly from user-provided shares
-      const tierMix = distanceAssumptions.tierMix;
-      const shares = [tierMix.le10, tierMix.le20, tierMix.le30, tierMix.gt30];
-      const totalShare = shares.reduce((a, b) => a + b, 0);
-
-      // Normalize shares to sum to 1
-      const normalizedShares = totalShare > 0 ? shares.map((s) => s / totalShare) : [0.25, 0.25, 0.25, 0.25];
-
-      // Build synthetic satellite distances based on tier midpoints
-      const tierMidpoints = [5, 15, 25, 40]; // midpoints for each tier
-      const syntheticSatellites: Array<{ packages: number; distance_to_anchor_miles: number }> = [];
-
-      for (let i = 0; i < 4; i++) {
-        const pkgsForTier = Math.round(satellite_packages * normalizedShares[i]);
-        if (pkgsForTier > 0) {
-          syntheticSatellites.push({
-            packages: pkgsForTier,
-            distance_to_anchor_miles: tierMidpoints[i],
-          });
-        }
-      }
-
-      density = computeDensityDiscount(syntheticSatellites, densityTiers);
-    } else {
-      // Per-store or average mode: use actual distances from stops
-      const satelliteDistances = stops_with_distance
-        .filter((s) => s.stop_type === "Satellite")
-        .map((s) => ({ packages: s.packages, distance_to_anchor_miles: s.distance_to_anchor_miles }));
-
-      density = computeDensityDiscount(satelliteDistances, densityTiers);
-    }
+    const density = computeDensityDiscount(satelliteDistances, densityTiers);
 
     const total_cube = sum(
       anchorStopsAll.map((s) => {

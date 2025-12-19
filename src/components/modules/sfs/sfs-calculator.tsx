@@ -8,9 +8,9 @@ import {
   ArrowDownToLine,
   ChevronDown,
   ChevronRight,
+  Copy,
   FileUp,
   Settings,
-  Sparkles,
 } from "lucide-react";
 
 import { ContentPanel } from "@/components/panels/ContentPanel";
@@ -23,15 +23,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { computeSfsEconomics } from "@/lib/sfs-calculator/compute";
 import type {
-  DistanceAssumptions,
-  DistanceMode,
   SfsCalculatorInputs,
   SfsDensityTier,
   SfsRateCard,
   SfsStoreUploadError,
   SfsStoreUploadRow,
   SfsStop,
-  TierMixShares,
   VehicleType,
 } from "@/lib/sfs-calculator/types";
 import { DEFAULT_INPUTS, SFS_MARKETS } from "@/lib/sfs-calculator/types";
@@ -43,7 +40,22 @@ import {
   generateSalesSummaryText,
   makeSatelliteResultsCsv,
 } from "@/lib/sfs-calculator/format";
-import { getStoresTemplateCsv, parseStoresUploadText } from "@/lib/sfs-calculator/parse-stores";
+import { getStoresTemplateCsv, parseStoresUploadText, type MissingDistanceError } from "@/lib/sfs-calculator/parse-stores";
+import {
+  generateErrorReportCsv,
+  generateMissingDistanceCsv,
+  getAffectedAnchorIdsText,
+} from "@/lib/sfs-calculator/error-report";
+
+function downloadCsv(csv: string, filename: string): void {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 import { computeSatelliteImpacts, type SfsSatelliteImpactSummary } from "@/lib/sfs-calculator/impact";
 import {
   AnchorListPanel,
@@ -94,18 +106,13 @@ export function SfsCalculator({
   const [uploadedRows, setUploadedRows] = React.useState<SfsStoreUploadRow[] | null>(null);
   const [uploadedStops, setUploadedStops] = React.useState<SfsStop[] | null>(null);
   const [uploadErrors, setUploadErrors] = React.useState<SfsStoreUploadError[]>([]);
-  const [hasDistanceMiles, setHasDistanceMiles] = React.useState(false);
+  const [missingDistanceErrors, setMissingDistanceErrors] = React.useState<MissingDistanceError[]>([]);
   const [selectedAnchorId, setSelectedAnchorId] = React.useState<string | null>(null);
   const [assumptionsExpanded, setAssumptionsExpanded] = React.useState(false);
   const [ratesExpanded, setRatesExpanded] = React.useState(false);
   const [diagnosticsExpanded, setDiagnosticsExpanded] = React.useState(false);
   const [densityTiers, setDensityTiers] = React.useState<SfsDensityTier[]>(() => initialDensityTiers);
-
-  // Distance mode state
-  const [distanceMode, setDistanceMode] = React.useState<DistanceMode>("average");
-  const [avgMiles, setAvgMiles] = React.useState<number>(10);
   const [storeSearchQuery, setStoreSearchQuery] = React.useState<string>("");
-  const [tierMix, setTierMix] = React.useState<TierMixShares>({ le10: 25, le20: 25, le30: 25, gt30: 25 });
 
   const [impactSummary, setImpactSummary] = React.useState<SfsSatelliteImpactSummary | null>(null);
   const [impactError, setImpactError] = React.useState<string | null>(null);
@@ -118,13 +125,6 @@ export function SfsCalculator({
     setDensityTiers((prev) => (prev.length ? prev : initialDensityTiers));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Auto-detect distance mode from CSV
-  React.useEffect(() => {
-    if (hasDistanceMiles) {
-      setDistanceMode("per_store");
-    }
-  }, [hasDistanceMiles]);
 
   const validationErrors = validateSfsInputs(inputs);
   const hasErrors = Object.keys(validationErrors).length > 0;
@@ -140,22 +140,15 @@ export function SfsCalculator({
     [rateCards, inputs.vehicle_type],
   );
 
-  // Build distance assumptions from current state
-  const distanceAssumptions = React.useMemo<DistanceAssumptions>(() => {
-    if (distanceMode === "per_store") {
-      return { mode: "per_store" };
-    }
-    if (distanceMode === "tier_mix") {
-      return { mode: "tier_mix", tierMix };
-    }
-    return { mode: "average", avgMiles };
-  }, [distanceMode, avgMiles, tierMix]);
+  // Block compute if missing distance_miles for satellites
+  const hasMissingDistances = missingDistanceErrors.length > 0;
 
   const canCompute =
     !!rateCard &&
     !hasErrors &&
     !!uploadedStops &&
     uploadErrors.length === 0 &&
+    !hasMissingDistances &&
     uploadedStops.length > 0;
 
   const computed = React.useMemo(() => {
@@ -166,14 +159,13 @@ export function SfsCalculator({
       return {
         results: computeSfsEconomics(inputs, uploadedStops, rateCard, {
           densityTiers,
-          distanceAssumptions,
         }),
         error: null,
       };
     } catch (err) {
       return { results: [], error: err instanceof Error ? err : new Error("Unknown compute error") };
     }
-  }, [canCompute, densityTiers, distanceAssumptions, inputs, rateCard, uploadedStops]);
+  }, [canCompute, densityTiers, inputs, rateCard, uploadedStops]);
 
   const anchorResults = computed.results;
   const computeError = computed.error;
@@ -237,7 +229,6 @@ export function SfsCalculator({
           anchorStops: selectedAnchorStops,
           rateCard,
           densityTiers,
-          distanceAssumptions,
         });
         setImpactSummary(computedImpact.summary);
       } catch (e) {
@@ -248,7 +239,6 @@ export function SfsCalculator({
   }, [
     canCompute,
     densityTiers,
-    distanceAssumptions,
     inputs,
     rateCard,
     selectedAnchorId,
@@ -274,11 +264,8 @@ export function SfsCalculator({
     setUploadedRows(null);
     setUploadedStops(null);
     setUploadErrors([]);
-    setHasDistanceMiles(false);
-    setDistanceMode("average");
-    setAvgMiles(10);
+    setMissingDistanceErrors([]);
     setStoreSearchQuery("");
-    setTierMix({ le10: 25, le20: 25, le30: 25, gt30: 25 });
     setSelectedAnchorId(null);
     toast.success("Reset complete");
   };
@@ -305,7 +292,7 @@ export function SfsCalculator({
       setUploadedRows(null);
       setUploadedStops(null);
       setUploadErrors(parsed.errors);
-      setHasDistanceMiles(false);
+      setMissingDistanceErrors([]);
       toast.error("Upload failed");
       return;
     }
@@ -313,9 +300,11 @@ export function SfsCalculator({
     setUploadedRows(parsed.rows);
     setUploadedStops(parsed.stops);
     setUploadErrors(parsed.errors);
-    setHasDistanceMiles(parsed.hasDistanceMiles);
+    setMissingDistanceErrors(parsed.missingDistanceErrors);
 
-    if (parsed.errors.length) {
+    if (parsed.missingDistanceErrors.length) {
+      toast.error(`${parsed.missingDistanceErrors.length} satellite row(s) missing distance_miles`);
+    } else if (parsed.errors.length) {
       toast.error(`Uploaded with ${parsed.errors.length} validation error(s)`);
     } else {
       toast.success("Stores uploaded");
@@ -328,7 +317,7 @@ export function SfsCalculator({
         {/* Step 1 */}
         <ContentPanel
           title="1) Upload stores"
-          description="Upload anchor + satellite stores. Include optional distance_miles column, or set average miles in Step 2."
+          description="Upload anchor + satellite stores. Each satellite row must include distance_miles (distance from anchor)."
           right={
             <div className="flex items-center gap-2">
               <Button
@@ -390,20 +379,110 @@ export function SfsCalculator({
 
           {uploadErrors.length ? (
             <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-amber-500">
-                <AlertCircle className="h-4 w-4" />
-                Please fix the following issues
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-500">
+                  <AlertCircle className="h-4 w-4" />
+                  {uploadErrors.length} validation error{uploadErrors.length > 1 ? "s" : ""}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={async () => {
+                      const text = uploadErrors.map((e) => `Row ${e.row}: ${e.message}`).join("\n");
+                      await navigator.clipboard.writeText(text);
+                      toast.success("Errors copied");
+                    }}
+                  >
+                    <Copy className="mr-1 h-3 w-3" />
+                    Copy errors
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const csv = generateErrorReportCsv(uploadErrors, uploadedRows);
+                      downloadCsv(csv, "sfs-error-report.csv");
+                      toast.success("Error report downloaded");
+                    }}
+                  >
+                    <ArrowDownToLine className="mr-1 h-3 w-3" />
+                    Download CSV
+                  </Button>
+                </div>
               </div>
               <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                {uploadErrors.slice(0, 8).map((err, idx) => (
+                {uploadErrors.slice(0, 5).map((err, idx) => (
                   <li key={`${err.row}-${idx}`} className="flex gap-2">
                     <span className="w-12 shrink-0 font-mono text-foreground/70">Row {err.row}</span>
                     <span>{err.message}</span>
                   </li>
                 ))}
-                {uploadErrors.length > 8 ? (
+                {uploadErrors.length > 5 ? (
                   <li className="text-xs text-muted-foreground">
-                    …and {uploadErrors.length - 8} more issues.
+                    …and {uploadErrors.length - 5} more issues.
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* Missing distance_miles error callout */}
+          {missingDistanceErrors.length > 0 ? (
+            <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Missing distance_miles ({missingDistanceErrors.length} row{missingDistanceErrors.length > 1 ? "s" : ""})
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={async () => {
+                      const text = getAffectedAnchorIdsText(missingDistanceErrors);
+                      await navigator.clipboard.writeText(text);
+                      toast.success("Anchor IDs copied");
+                    }}
+                  >
+                    <Copy className="mr-1 h-3 w-3" />
+                    Copy anchor_ids
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const csv = generateMissingDistanceCsv(missingDistanceErrors, uploadedRows);
+                      downloadCsv(csv, "sfs-missing-distance.csv");
+                      toast.success("Missing distance CSV downloaded");
+                    }}
+                  >
+                    <ArrowDownToLine className="mr-1 h-3 w-3" />
+                    Download CSV
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                <span className="font-mono text-foreground">distance_miles</span> = miles from the anchor to that satellite stop. Add this value to each satellite row.
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {missingDistanceErrors.slice(0, 3).map((err) => (
+                  <li key={`${err.row}-${err.anchor_id}`}>
+                    • Row {err.row}: anchor <span className="font-mono text-foreground">{err.anchor_id}</span>
+                    {err.store_name ? `, "${err.store_name}"` : ""}
+                  </li>
+                ))}
+                {missingDistanceErrors.length > 3 ? (
+                  <li className="text-muted-foreground/70">
+                    …and {missingDistanceErrors.length - 3} more.
                   </li>
                 ) : null}
               </ul>
@@ -420,7 +499,7 @@ export function SfsCalculator({
           ) : null}
 
           {uploadedRows?.length ? (
-            <details className="mt-4 group" open>
+            <details className="mt-4 group">
               <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                 View uploaded rows ({uploadedRows.length})
               </summary>
@@ -441,7 +520,7 @@ export function SfsCalculator({
                         <th className="px-3 py-2">store_name</th>
                         <th className="px-3 py-2">store_id</th>
                         <th className="px-3 py-2 text-right">packages</th>
-                        {hasDistanceMiles && <th className="px-3 py-2 text-right">distance_miles</th>}
+                        <th className="px-3 py-2 text-right">distance_miles</th>
                         <th className="px-3 py-2">window</th>
                       </tr>
                     </thead>
@@ -456,23 +535,24 @@ export function SfsCalculator({
                                 (r.store_id?.toLowerCase().includes(q) ?? false)
                             )
                           : uploadedRows;
-                        return filtered.slice(0, 50).map((row, idx) => (
-                          <tr key={`${row.anchor_id}-${idx}`} className="text-foreground/90">
-                            <td className="px-3 py-2 font-mono">{row.anchor_id}</td>
-                            <td className="px-3 py-2">{row.stop_type}</td>
-                            <td className="px-3 py-2">{row.store_name || "—"}</td>
-                            <td className="px-3 py-2 font-mono text-muted-foreground">{row.store_id}</td>
-                            <td className="px-3 py-2 text-right font-mono">{row.packages}</td>
-                            {hasDistanceMiles && (
-                              <td className="px-3 py-2 text-right font-mono">
-                                {row.distance_miles != null ? row.distance_miles.toFixed(1) : "—"}
+                        return filtered.slice(0, 50).map((row, idx) => {
+                          const isSatelliteMissingDistance = row.stop_type === "Satellite" && (row.distance_miles == null || row.distance_miles < 0);
+                          return (
+                            <tr key={`${row.anchor_id}-${idx}`} className={`text-foreground/90 ${isSatelliteMissingDistance ? "bg-destructive/5" : ""}`}>
+                              <td className="px-3 py-2 font-mono">{row.anchor_id}</td>
+                              <td className="px-3 py-2">{row.stop_type}</td>
+                              <td className="px-3 py-2">{row.store_name || "—"}</td>
+                              <td className="px-3 py-2 font-mono text-muted-foreground">{row.store_id}</td>
+                              <td className="px-3 py-2 text-right font-mono">{row.packages}</td>
+                              <td className={`px-3 py-2 text-right font-mono ${isSatelliteMissingDistance ? "text-destructive" : ""}`}>
+                                {row.stop_type === "Anchor" ? "—" : row.distance_miles != null ? row.distance_miles.toFixed(1) : "missing"}
                               </td>
-                            )}
-                            <td className="px-3 py-2 font-mono text-muted-foreground">
-                              {row.pickup_window_start_time}–{row.pickup_window_end_time}
-                            </td>
-                          </tr>
-                        ));
+                              <td className="px-3 py-2 font-mono text-muted-foreground">
+                                {row.pickup_window_start_time}–{row.pickup_window_end_time}
+                              </td>
+                            </tr>
+                          );
+                        });
                       })()}
                     </tbody>
                   </table>
@@ -575,160 +655,23 @@ export function SfsCalculator({
             </div>
           </div>
 
-          {/* Density discount distances */}
-          <div className="mt-4 rounded-lg border border-border bg-background/10 p-4">
-            <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
-              Density discount distances
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Used only to estimate density savings. Stop fees are never discounted.
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[
-                { value: "per_store" as const, label: "Per-store (from CSV)", disabled: !hasDistanceMiles },
-                { value: "average" as const, label: "Average miles" },
-                { value: "tier_mix" as const, label: "Tier mix %" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  disabled={opt.disabled}
-                  onClick={() => setDistanceMode(opt.value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    distanceMode === opt.value
-                      ? "bg-[var(--warp-primary)] text-white"
-                      : opt.disabled
-                        ? "bg-background/20 text-muted-foreground/50 cursor-not-allowed"
-                        : "bg-background/20 text-muted-foreground hover:bg-background/30"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {distanceMode === "per_store" && (
-              <p className="mt-3 text-[11px] text-muted-foreground">
-                Using <span className="font-mono text-foreground">distance_miles</span> column from your CSV.
-              </p>
-            )}
-
-            {!hasDistanceMiles && distanceMode !== "per_store" && (
-              <p className="mt-3 text-[11px] text-muted-foreground">
-                <span className="font-medium text-foreground">Tip:</span> Add a <span className="font-mono">distance_miles</span> column to your CSV for per-store distances.
-              </p>
-            )}
-
-            {distanceMode === "average" && (
-              <div className="mt-3 flex items-center gap-2">
-                <Label className="text-[11px] text-muted-foreground whitespace-nowrap">Avg distance (mi)</Label>
-                <Input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={avgMiles}
-                  onChange={(e) => setAvgMiles(Math.max(0, Number(e.target.value) || 0))}
-                  className="h-8 w-24 text-right font-mono"
-                />
-              </div>
-            )}
-
-            {distanceMode === "tier_mix" && (
-              <div className="mt-3 space-y-3">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    { key: "le10" as const, label: "≤10 mi" },
-                    { key: "le20" as const, label: "10–20 mi" },
-                    { key: "le30" as const, label: "20–30 mi" },
-                    { key: "gt30" as const, label: ">30 mi" },
-                  ].map((tier) => (
-                    <div key={tier.key} className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">{tier.label}</Label>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="100"
-                          value={tierMix[tier.key]}
-                          onChange={(e) => {
-                            const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                            setTierMix((prev) => ({ ...prev, [tier.key]: v }));
-                          }}
-                          className="h-8 text-right font-mono"
-                        />
-                        <span className="text-xs text-muted-foreground">%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {(() => {
-                  const total = tierMix.le10 + tierMix.le20 + tierMix.le30 + tierMix.gt30;
-                  const isClose = total >= 99.5 && total <= 100.5 && total !== 100;
-                  const isOff = total < 99.5 || total > 100.5;
-                  return (
-                    <div className="flex items-center gap-2">
-                      {isOff && (
-                        <p className="text-[11px] text-amber-500">
-                          Total is {total}% — should be 100%.
-                        </p>
-                      )}
-                      {isClose && (
-                        <>
-                          <p className="text-[11px] text-muted-foreground">
-                            Total is {total}% — close enough, will normalize.
-                          </p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-[10px]"
-                            onClick={() => {
-                              const sum = tierMix.le10 + tierMix.le20 + tierMix.le30 + tierMix.gt30;
-                              if (sum === 0) return;
-                              setTierMix({
-                                le10: Math.round((tierMix.le10 / sum) * 100),
-                                le20: Math.round((tierMix.le20 / sum) * 100),
-                                le30: Math.round((tierMix.le30 / sum) * 100),
-                                gt30: 100 - Math.round((tierMix.le10 / sum) * 100) - Math.round((tierMix.le20 / sum) * 100) - Math.round((tierMix.le30 / sum) * 100),
-                              });
-                            }}
-                          >
-                            Normalize
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Always show discount tier table */}
-            <div className="mt-4 pt-3 border-t border-border/60">
-              <div className="text-[11px] text-muted-foreground mb-2">Discount by distance tier:</div>
-              <div
-                className="grid overflow-hidden rounded-lg border border-border/60 bg-background/10"
-                style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
+          {/* Discount tier pills - compact display */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">Discount tiers:</span>
+            {[
+              { label: "≤10 mi", discount: "5%" },
+              { label: "10–20 mi", discount: "4%" },
+              { label: "20–30 mi", discount: "3%" },
+              { label: ">30 mi", discount: "0%" },
+            ].map((t) => (
+              <span
+                key={t.label}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background/10 px-2 py-0.5 text-[10px]"
               >
-                {[
-                  { label: "≤10 mi", discount: "20%" },
-                  { label: "10–20 mi", discount: "12%" },
-                  { label: "20–30 mi", discount: "6%" },
-                  { label: ">30 mi", discount: "0%" },
-                ].map((t, idx) => (
-                  <div
-                    key={t.label}
-                    className={`px-3 py-2 ${idx < 3 ? "border-r border-border/60" : ""}`}
-                  >
-                    <div className="text-[11px] font-medium text-foreground">{t.label}</div>
-                    <div className="text-[11px] font-mono text-muted-foreground">{t.discount}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                <span className="text-muted-foreground">{t.label}</span>
+                <span className="font-mono font-medium text-foreground">{t.discount}</span>
+              </span>
+            ))}
           </div>
 
           {/* Collapsible Assumptions (advanced) */}
@@ -911,13 +854,15 @@ export function SfsCalculator({
                 ? "Upload a stores file to see results."
                 : uploadErrors.length
                   ? "Fix upload errors above to see results."
-                  : !rateCard
-                    ? isAdmin
-                      ? "Configure rates in Admin → Setup to compute results."
-                      : "Rates need to be configured. Contact an admin."
-                    : hasErrors
-                      ? "Fix input errors above to see results."
-                      : "No data available."}
+                  : hasMissingDistances
+                    ? "Add distance_miles to all satellite rows in your CSV to see results."
+                    : !rateCard
+                      ? isAdmin
+                        ? "Configure rates in Admin → Setup to compute results."
+                        : "Rates need to be configured. Contact an admin."
+                      : hasErrors
+                        ? "Fix input errors above to see results."
+                        : "No data available."}
             </div>
           ) : computeError ? (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">

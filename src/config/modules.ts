@@ -107,7 +107,7 @@ export const MODULES: ModuleConfig[] = [
     slug: "sfs",
     title: "SFS",
     description: "Ship-from-store fulfillment and inventory-aware routing.",
-    layoutVariant: "standard", // Future: switch to "sfs_calculator"
+    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Dynamic routing based on inventory confidence and promised delivery date.",
@@ -125,6 +125,17 @@ export const MODULES: ModuleConfig[] = [
         "Month 3: pilot with tight metrics and daily ops review.",
         "Month 4: expand SKU/store coverage and automate exception triage.",
       ],
+    }),
+  },
+  {
+    slug: "sfs-calculator",
+    title: "SFS Calculator",
+    description: "Upload stores and estimate density savings.",
+    layoutVariant: "sfs_calculator",
+    sections: makeSections({
+      endVision: [],
+      progress: [],
+      roadmap: [],
     }),
   },
   {

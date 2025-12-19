@@ -3,10 +3,10 @@ import type { SfsDensityTier, SfsDensityTierBreakdown } from "./types";
 const EARTH_RADIUS_MILES = 3958.7613;
 
 export const DEFAULT_DENSITY_TIERS: SfsDensityTier[] = [
-  { sortOrder: 1, minMiles: 0, maxMiles: 10, discountPct: 0.2, label: "0–10 mi" },
-  { sortOrder: 2, minMiles: 10, maxMiles: 20, discountPct: 0.12, label: "10–20 mi" },
-  { sortOrder: 3, minMiles: 20, maxMiles: 30, discountPct: 0.06, label: "20–30 mi" },
-  { sortOrder: 4, minMiles: 30, maxMiles: null, discountPct: 0.0, label: "30+ mi" },
+  { sortOrder: 1, minMiles: 0, maxMiles: 10, discountPct: 0.05, label: "≤10 mi" },
+  { sortOrder: 2, minMiles: 10, maxMiles: 20, discountPct: 0.04, label: "10–20 mi" },
+  { sortOrder: 3, minMiles: 20, maxMiles: 30, discountPct: 0.03, label: "20–30 mi" },
+  { sortOrder: 4, minMiles: 30, maxMiles: null, discountPct: 0.0, label: ">30 mi" },
 ] as const;
 
 function toRadians(deg: number): number {
@@ -134,7 +134,7 @@ export function computeDensityDiscount(
 
   const rawDiscount = breakdown.reduce((acc, b) => acc + b.contribution, 0);
   const maxTierDiscount = Math.max(...sorted.map((t) => t.discountPct));
-  const density_discount_cap_pct = Math.min(0.2, Math.max(0, maxTierDiscount));
+  const density_discount_cap_pct = Math.min(0.05, Math.max(0, maxTierDiscount));
   const density_discount_pct = Math.min(density_discount_cap_pct, Math.max(0, rawDiscount));
 
   return { breakdown, density_discount_pct, density_discount_cap_pct };
