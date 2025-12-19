@@ -54,7 +54,17 @@ Private, authenticated SaaS-style portal for Warp x DoorDash.
 - Run `supabase/sql/07_sfs_rate_card_audit.sql`
 - This adds audit actions: `sfs_rate_card_created`, `sfs_rate_card_updated`, `sfs_rate_card_deleted`.
 
-11) Start the dev server: `corepack pnpm dev` (defaults to `http://localhost:1130`)
+11) Create SFS store locations table (run once in Supabase SQL editor):
+- Run `supabase/sql/11_sfs_store_locations.sql`
+- This enables admin-managed `store_id → lat/lon` entries used for density discount distances.
+- The calculator will fall back to the in-code dictionary if the table is missing/unavailable.
+
+12) Create SFS density discount tiers table (run once in Supabase SQL editor):
+- Run `supabase/sql/12_sfs_density_discount_tiers.sql`
+- Seeds default tiers (0–10 / 10–20 / 20–30 / 30+) and enables admin-managed tier editing.
+- The calculator will fall back to default tiers if the table is missing/unavailable or tiers are invalid.
+
+13) Start the dev server: `corepack pnpm dev` (defaults to `http://localhost:1130`)
 
 If the `profiles` table doesn’t exist yet, the UI defaults to role `user`.
 
@@ -94,18 +104,30 @@ If the `profiles` table doesn’t exist yet, the UI defaults to role `user`.
 ## Smoke test: SFS Route Economics Calculator
 
 1) Visit `/m/sfs` → click **Calculator** tab.
-2) Step 1: Click **Download template CSV** → upload it back into the uploader.
-3) Step 2: Select vehicle type (Cargo Van / 26' Box Truck) → confirm "Rates applied" reflects DB values.
-4) Step 3: Confirm you see one feasibility row per unique `anchor_id` (Pass/Fail).
-5) Step 4: Select an anchor → confirm Anchor CPP / Blended CPP / Total route cost render.
-6) Click **Copy selected** and **Copy all** → output matches the PDF `OUTPUT_TEMPLATE` format (per-anchor, separated by blank lines).
-7) As admin, visit `/admin?tab=setup` → scroll to "SFS Rate Cards" → edit a value → refresh `/m/sfs?tab=calculator` to see it applied.
+2) Section 1 (**Stores**): Click **Template** → upload it back into the uploader.
+3) Section 2 (**Route assumptions**): Select vehicle type (Cargo Van / 26' Box Truck) → confirm the Admin rates panel reflects DB values (or default rates if DB is missing).
+4) Section 3 (**Savings & pricing**): Select an anchor → confirm you see:
+   - Density discount tier legend (0–10 / 10–20 / 20–30 / 30+)
+   - Pricing cards: Regular cost (no density) vs With density discount vs Savings
+   - “Your uploaded stores by tier” distribution (store count, satellite pkgs, share)
+   - Satellite impact table (distance, tier, incremental savings)
+5) Click **Copy summary** → output includes pricing + weighted discount + top satellite impacts.
+6) Click **Download results CSV** → downloads one row per satellite for the selected anchor.
+6) Upload a CSV with an unknown `store_id`:
+   - Non-admin: see “Unknown store IDs” card and can copy missing ids.
+   - Admin: click “Add missing store IDs” → enter lat/lon → Save → validation re-runs.
+7) As admin, visit `/admin?tab=setup` → manage:
+   - SFS Rate Cards
+   - SFS Store Locations
+   - SFS Density Discount Tiers
+   Refresh `/m/sfs?tab=calculator` to see changes applied (may need a refresh due to short-lived caching).
 
 ## Smoke test: Missing Table Error State
 
 1) Before running migration (or after dropping table), visit `/m/sfs?tab=calculator`.
-2) Calculator shows friendly "SFS calculator isn't configured yet" message (no Next error overlay).
-3) Admin users see "Go to Admin → Setup" link; non-admins see "Contact an admin" message.
+2) Calculator still works using default rates (no crash / no Next error overlay).
+3) Admin users see a “Using default rates” callout with a link to `/admin?tab=setup`.
+4) If store locations / density tiers tables are missing, admins see a warning and the calculator uses fallbacks.
 
 ## SFS Calculator Release Checklist
 
@@ -113,17 +135,17 @@ Before shipping SFS calculator changes:
 
 - [ ] `corepack pnpm lint` passes
 - [ ] `corepack pnpm build` passes
-- [ ] `npx tsx src/lib/sfs-calculator/compute.test.ts` passes
+- [ ] `corepack pnpm test` passes
 - [ ] Smoke test: Upload template CSV → results appear per anchor_id
 - [ ] Smoke test: Vehicle type switch updates CPPs and costs
-- [ ] Smoke test: Copy selected / Copy all matches PDF output template
+- [ ] Smoke test: Results show discount tiers + band distribution + weighted discount
+- [ ] Smoke test: Unknown store_id hard-fails with missing ids list
 - [ ] Smoke test: Admin rate card edits reflect in calculator without redeploy
 - [ ] Smoke test: Audit log shows `sfs_rate_card_created/updated/deleted` entries
-- [ ] Smoke test: Missing table shows friendly error state (no crash)
+- [ ] Smoke test: Missing rate cards table falls back to default rates (no crash)
 
 ## Running tests
 
 ```bash
-# SFS Calculator compute engine tests
-npx tsx src/lib/sfs-calculator/compute.test.ts
+corepack pnpm test
 ```

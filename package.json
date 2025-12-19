@@ -6,7 +6,8 @@
     "dev": "next dev --webpack -p 1130",
     "build": "next build --webpack",
     "start": "next start -p 1130",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsc -p tsconfig.tests.json && node --test .tmp/tests/tests/**/*.test.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

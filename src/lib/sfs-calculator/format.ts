@@ -1,9 +1,9 @@
 /**
- * Formatting utilities for SFS Calculator results
+ * Formatting utilities for SFS Calculator results (V3).
  */
 
 import type { SfsAnchorResult, SfsCalculatorInputs } from "./types";
-import type { RegularVsDensityResult, SatelliteBenefitDelta } from "./derive-density-benefits";
+import type { SfsSatelliteImpactSummary } from "./impact";
 
 /** Format a number as currency (USD) */
 export function formatCurrency(value: number): string {
@@ -39,19 +39,28 @@ function formatCurrencyOrNA(value: number, isAvailable: boolean): string {
   return formatCurrency(value);
 }
 
-export interface DensityOutputData {
-  inputs: SfsCalculatorInputs;
-  densityResult: RegularVsDensityResult;
-  satelliteDeltas: SatelliteBenefitDelta[];
-}
-
 /**
- * Generates copy text using density benefit language (no feasibility).
- * Anchors are separated by a blank line when concatenated.
+ * Generates copy text for one anchor using the V3 density discount model.
  */
-export function generateDensityOutputText(data: DensityOutputData): string {
-  const { inputs, densityResult, satelliteDeltas } = data;
-  const result = densityResult.fullResult;
+export function generateDensityOutputText(data: {
+  inputs: SfsCalculatorInputs;
+  result: SfsAnchorResult;
+}): string {
+  const { inputs, result } = data;
+
+  const tiersLine =
+    result.density_tiers.length > 0
+      ? result.density_tiers
+          .map((t) => `${t.label} ${formatPercent(t.discountPct)}`)
+          .join(" | ")
+      : "—";
+
+  const distributionLine =
+    result.density_tiers.length > 0
+      ? result.density_tiers
+          .map((t) => `${t.label} ${formatPercent(t.satelliteShare)}`)
+          .join(" | ")
+      : "—";
 
   const lines = [
     "Ship From Store Route Economics",
@@ -59,28 +68,36 @@ export function generateDensityOutputText(data: DensityOutputData): string {
     `Vehicle: ${inputs.vehicle_type}`,
     `Anchor ID: ${result.anchor_id}`,
     "",
-    "--- Cost Summary ---",
-    `Regular CPP: ${formatCurrencyOrNA(densityResult.regularCpp, densityResult.regularCpp > 0)}`,
-    `With Density Benefits CPP: ${formatCurrencyOrNA(densityResult.withDensityCpp, result.total_packages > 0)}`,
-    densityResult.hasDensityBenefit
-      ? `Savings: ${formatCurrency(densityResult.savingsAmount)} (${formatPercent(densityResult.savingsPercent)})`
-      : `Status: Regular costs (no density benefit)`,
+    "--- Density Discount ---",
+    `Discount tiers: ${tiersLine}`,
+    `Your distribution (satellite pkgs): ${distributionLine}`,
+    `Weighted discount: ${formatPercent(result.density_discount_pct)}`,
     "",
-    "--- Route Details ---",
-    `Total Packages: ${formatPlainNumber(result.total_packages)}`,
-    `Total Stops: ${formatPlainNumber(result.total_stops)}`,
-    `Drivers Required: ${formatPlainNumber(result.drivers_required)}`,
-    `Anchor Route Cost: ${formatCurrency(result.anchor_route_cost)}`,
-    `Total Route Cost: ${formatCurrency(result.blended_cost)}`,
+    "--- Costs ---",
+    `Base portion (no density): ${formatCurrency(result.base_portion_before_density)}`,
+    `Base portion (after density): ${formatCurrency(result.base_portion_after_density)}`,
+    `Stop fees (satellites): ${formatCurrency(result.stop_fees_total)}`,
+    `Total route cost: ${formatCurrency(result.blended_cost)}`,
+    "",
+    "--- CPP ---",
+    `Anchor CPP: ${formatCurrencyOrNA(result.anchor_cpp, result.anchor_packages > 0)}`,
+    `Blended CPP: ${formatCurrencyOrNA(result.blended_cpp, result.total_packages > 0)}`,
+    `Effective density savings: ${formatPercent(result.effective_density_savings_pct)}`,
+    "",
+    "--- Volume ---",
+    `Anchor packages: ${formatPlainNumber(result.anchor_packages)}`,
+    `Satellite packages: ${formatPlainNumber(result.satellite_packages)}`,
+    `Total packages: ${formatPlainNumber(result.total_packages)}`,
+    `Satellite stops: ${formatPlainNumber(result.satellite_stops)} | Total stops: ${formatPlainNumber(result.total_stops)}`,
   ];
 
-  if (satelliteDeltas.length > 0) {
-    lines.push("", "--- Store Additions ---");
-    for (const sat of satelliteDeltas) {
-      const benefitLabel = sat.hasBenefit
-        ? `Density benefit (${formatCurrency(sat.benefitDelta)} CPP)`
-        : "Regular cost";
-      lines.push(`• ${sat.storeName}: ${sat.packages} pkgs, ${sat.window} — ${benefitLabel}`);
+  const satellites = result.stops_with_distance.filter((s) => s.stop_type === "Satellite");
+  if (satellites.length > 0) {
+    lines.push("", "--- Satellites ---");
+    for (const s of satellites) {
+      lines.push(
+        `• ${s.store_name} (${s.store_id}): ${formatPlainNumber(s.packages)} pkgs, ${s.distance_to_anchor_miles.toFixed(1)} mi — ${s.tier_label} (${formatPercent(s.tier_discount_pct)})`,
+      );
     }
   }
 
@@ -88,59 +105,123 @@ export function generateDensityOutputText(data: DensityOutputData): string {
 }
 
 /**
- * Generates copy text for multiple anchors using density benefit language.
+ * Generates copy text for multiple anchors (V3).
  */
 export function generateAllAnchorsOutputText(
-  inputs: SfsCalculatorInputs,
-  densityResults: RegularVsDensityResult[],
-): string {
-  return densityResults
-    .map((dr) => {
-      const result = dr.fullResult;
-      const statusLabel = dr.hasDensityBenefit
-        ? `Savings: ${formatCurrency(dr.savingsAmount)} (${formatPercent(dr.savingsPercent)})`
-        : "Regular costs";
-
-      return [
-        `Anchor: ${result.anchor_id}`,
-        `Regular CPP: ${formatCurrencyOrNA(dr.regularCpp, dr.regularCpp > 0)}`,
-        `With Density CPP: ${formatCurrencyOrNA(dr.withDensityCpp, result.total_packages > 0)}`,
-        statusLabel,
-        `Packages: ${result.total_packages} | Stops: ${result.total_stops}`,
-      ].join("\n");
-    })
-    .join("\n\n");
-}
-
-/**
- * Legacy: Generates copy text using the PDF's OUTPUT_TEMPLATE format (per anchor).
- * @deprecated Use generateDensityOutputText instead
- */
-export function generateOutputText(
   inputs: SfsCalculatorInputs,
   results: SfsAnchorResult[],
 ): string {
   return results
     .map((result) => {
-      const regularCpp = result.anchor_cpp;
-      const withDensityCpp = result.blended_cpp;
-      const savings = regularCpp - withDensityCpp;
-      const hasBenefit = savings > 0.005;
-
       return [
-        "Ship From Store Route Economics",
-        `Market: ${inputs.market}`,
-        `Vehicle: ${inputs.vehicle_type}`,
-        `Anchor ID: ${result.anchor_id}`,
-        `Regular CPP: ${formatCurrencyOrNA(result.anchor_cpp, result.anchor_packages > 0)}`,
-        `With Density Benefits CPP: ${formatCurrencyOrNA(result.blended_cpp, result.total_packages > 0)}`,
-        hasBenefit
-          ? `Savings: ${formatCurrency(savings)} (${formatPercent(savings / regularCpp)})`
-          : `Status: Regular costs`,
-        `Drivers Required: ${formatPlainNumber(result.drivers_required)}`,
-        `Total Packages: ${formatPlainNumber(result.total_packages)}`,
-        `Total Stops: ${formatPlainNumber(result.total_stops)}`,
+        `Anchor: ${result.anchor_id}`,
+        `Weighted discount: ${formatPercent(result.density_discount_pct)}`,
+        `Anchor CPP: ${formatCurrencyOrNA(result.anchor_cpp, result.anchor_packages > 0)}`,
+        `Blended CPP: ${formatCurrencyOrNA(result.blended_cpp, result.total_packages > 0)}`,
+        `Total route cost: ${formatCurrency(result.blended_cost)}`,
       ].join("\n");
     })
     .join("\n\n");
+}
+
+function csvEscape(value: string): string {
+  if (value.includes('"') || value.includes(",") || value.includes("\n") || value.includes("\r")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function makeSatelliteResultsCsv(args: { inputs: SfsCalculatorInputs; summary: SfsSatelliteImpactSummary }): string {
+  const { inputs, summary } = args;
+
+  const header = [
+    "anchor_id",
+    "market",
+    "vehicle_type",
+    "store_id",
+    "store_name",
+    "distance_mi",
+    "tier_label",
+    "packages",
+    "incremental_savings",
+    "classification",
+  ].join(",");
+
+  const rows = summary.impacts.map((r) => {
+    return [
+      csvEscape(summary.anchor_id),
+      csvEscape(inputs.market),
+      csvEscape(inputs.vehicle_type),
+      csvEscape(r.store_id),
+      csvEscape(r.store_name),
+      String(Number.isFinite(r.distance_to_anchor_miles) ? Number(r.distance_to_anchor_miles.toFixed(1)) : 0),
+      csvEscape(r.tier_label),
+      String(r.packages ?? 0),
+      String(Number.isFinite(r.incremental_savings) ? Number(r.incremental_savings.toFixed(2)) : 0),
+      csvEscape(r.classification),
+    ].join(",");
+  });
+
+  return [header, ...rows].join("\n");
+}
+
+export function generateSalesSummaryText(args: {
+  inputs: SfsCalculatorInputs;
+  selected: SfsAnchorResult;
+  summary: SfsSatelliteImpactSummary;
+}): string {
+  const { inputs, selected, summary } = args;
+
+  const tiers = summary.tier_distribution
+    .slice()
+    .sort((a, b) => b.contributionPctPoints - a.contributionPctPoints);
+
+  const topTierDrivers = tiers
+    .filter((t) => t.satellitePackages > 0 && t.contributionPctPoints > 0)
+    .slice(0, 2)
+    .map((t) => `${t.label} (${formatPercent(t.discountPct)} × ${formatPercent(t.satelliteShare)})`)
+    .join(" | ");
+
+  const topSatellites = summary.impacts
+    .filter((s) => s.incremental_savings > 0)
+    .slice()
+    .sort((a, b) => b.incremental_savings - a.incremental_savings)
+    .slice(0, 3);
+
+  const lines: string[] = [];
+  lines.push("SFS Density Discount Summary");
+  lines.push(`Anchor ID: ${summary.anchor_id}`);
+  lines.push(`Market: ${inputs.market}`);
+  lines.push(`Vehicle: ${inputs.vehicle_type}`);
+  lines.push("");
+  lines.push("--- Pricing ---");
+  lines.push(`Regular CPP (no density): ${formatCurrency(summary.regular_blended_cpp)}`);
+  lines.push(`With density CPP: ${formatCurrency(summary.discounted_blended_cpp)}`);
+  lines.push(`Savings from density: ${formatCurrency(summary.savings_dollars)} (${formatPercent(summary.savings_pct)})`);
+  lines.push(`Weighted discount: ${formatPercent(summary.weighted_discount_pct)}`);
+  if (topTierDrivers) {
+    lines.push(`Top tier drivers: ${topTierDrivers}`);
+  }
+
+  lines.push("");
+  lines.push("--- Notes ---");
+  lines.push("• Density discount applies only to the base portion; stop fees are unchanged.");
+  lines.push("• Assumes route capacity is sufficient for combined packages.");
+
+  if (topSatellites.length) {
+    lines.push("");
+    lines.push("--- Top satellite impacts ---");
+    for (const s of topSatellites) {
+      lines.push(
+        `• ${s.store_name} (${s.store_id}) — ${s.distance_to_anchor_miles.toFixed(1)} mi, ${s.tier_label}: +${formatCurrency(s.incremental_savings)} savings`,
+      );
+    }
+  }
+
+  if (selected.anchor_packages === 0) {
+    lines.push("");
+    lines.push("⚠️ Anchor packages are 0; CPP values may not be meaningful.");
+  }
+
+  return lines.join("\n");
 }

@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import type { ModuleRegistryEntry } from "@/lib/modules/registry";
-import type { SfsRateCard } from "@/lib/sfs-calculator/types";
+import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
 import type { SfsConfigError } from "../sfs/sfs-calculator";
 import { NarrativeModuleLayout } from "./narrative-module-layout";
 import { SfsModuleLayout } from "../sfs/sfs-module-layout";
@@ -23,8 +23,12 @@ export interface ResolveModuleLayoutProps {
   activeTab?: string;
   /** Rate cards for SFS calculator */
   rateCards?: SfsRateCard[];
+  /** Density tiers for SFS calculator */
+  densityTiers?: SfsDensityTier[];
   /** Configuration error for calculator layouts */
   configError?: SfsConfigError | null;
+  /** Admin-only warnings when using fallbacks */
+  adminWarnings?: { densityTiers?: string } | null;
   /** Whether current user is admin */
   isAdmin?: boolean;
 }
@@ -40,7 +44,9 @@ export function resolveModuleLayout({
   sections,
   activeTab,
   rateCards = [],
+  densityTiers,
   configError,
+  adminWarnings,
   isAdmin = false,
 }: ResolveModuleLayoutProps): React.ReactNode {
   switch (moduleEntry.layout) {
@@ -53,7 +59,9 @@ export function resolveModuleLayout({
           sections={sections}
           activeTab={(activeTab ?? "overview") as SfsTabKey}
           rateCards={rateCards}
+          densityTiers={densityTiers}
           configError={configError}
+          adminWarnings={adminWarnings}
           isAdmin={isAdmin}
         />
       );
@@ -69,4 +77,3 @@ export function resolveModuleLayout({
       );
   }
 }
-

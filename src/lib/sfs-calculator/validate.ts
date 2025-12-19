@@ -52,3 +52,30 @@ export const RateCardSchema = z.object({
 export const RateCardUpdateSchema = RateCardSchema.extend({
   id: z.string().uuid("Invalid rate card ID"),
 });
+
+export const SfsStoreLocationUpsertSchema = z.object({
+  store_id: z.string().trim().min(1, "store_id is required"),
+  store_name: z.string().trim().min(1).nullable().optional(),
+  market: z.string().trim().min(1).nullable().optional(),
+  lat: z.number().finite(),
+  lon: z.number().finite(),
+  is_active: z.boolean().optional(),
+});
+
+export const SfsStoreLocationsBatchSchema = z.object({
+  locations: z.array(SfsStoreLocationUpsertSchema).min(1, "At least one store location is required"),
+});
+
+export const SfsDensityTierUpsertSchema = z.object({
+  id: z.string().uuid().optional(),
+  sort_order: z.number().int().finite(),
+  min_miles: z.number().finite().nonnegative(),
+  max_miles: z.number().finite().nullable().optional(),
+  discount_pct: z.number().finite().min(0).max(0.5),
+  label: z.string().trim().min(1).nullable().optional(),
+  is_active: z.boolean().optional(),
+});
+
+export const SfsDensityTiersBatchSchema = z.object({
+  tiers: z.array(SfsDensityTierUpsertSchema).min(1, "At least one tier is required"),
+});

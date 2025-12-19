@@ -1,5 +1,6 @@
 import {
-  SFS_STORES_UPLOAD_HEADERS,
+  SFS_STORES_UPLOAD_REQUIRED_HEADERS,
+  SFS_STORES_UPLOAD_OPTIONAL_HEADERS,
   type SfsStoreUploadError,
   type SfsStop,
   type SfsStoreUploadRow,
@@ -12,6 +13,8 @@ export type StoresUploadParseOk = {
   rows: SfsStoreUploadRow[];
   stops: SfsStop[];
   errors: SfsStoreUploadError[];
+  /** True if CSV has distance_miles column with values. */
+  hasDistanceMiles: boolean;
 };
 
 export type StoresUploadParseError = {
@@ -141,7 +144,7 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     return {
       ok: false,
       delimiter,
-      missingHeaders: [...SFS_STORES_UPLOAD_HEADERS],
+      missingHeaders: [...SFS_STORES_UPLOAD_REQUIRED_HEADERS],
       errors: [{ row: 1, message: "File is empty." }],
     };
   }
@@ -150,7 +153,7 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
   const headerIndex = new Map<string, number>();
   header.forEach((h, idx) => headerIndex.set(h, idx));
 
-  const missingHeaders = SFS_STORES_UPLOAD_HEADERS.filter((h) => !headerIndex.has(h));
+  const missingHeaders = SFS_STORES_UPLOAD_REQUIRED_HEADERS.filter((h) => !headerIndex.has(h));
   if (missingHeaders.length) {
     return {
       ok: false,
@@ -165,6 +168,10 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     };
   }
 
+  const hasDistanceMilesColumn = headerIndex.has("distance_miles");
+  const hasStoreIdColumn = headerIndex.has("store_id");
+  let hasAnyDistanceMiles = false;
+
   const rows: SfsStoreUploadRow[] = [];
   const stops: SfsStop[] = [];
 
@@ -172,12 +179,15 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     const rawRow = matrix[r];
     if (rawRow.every((c) => c.trim() === "")) continue;
 
-    const get = (key: (typeof SFS_STORES_UPLOAD_HEADERS)[number]) =>
-      rawRow[headerIndex.get(key)!] ?? "";
+    const get = (key: string) => rawRow[headerIndex.get(key) ?? -1] ?? "";
 
     const anchor_id = get("anchor_id").trim();
     const stopTypeValue = get("stop_type");
     const stop_type = parseStopType(stopTypeValue);
+
+    const route_id = get("route_id").trim();
+    const store_id = hasStoreIdColumn ? get("store_id").trim() : undefined;
+    const store_name = get("store_name").trim();
 
     const packagesValue = get("packages");
     const packages = parseRequiredNumber(packagesValue);
@@ -187,11 +197,25 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     const startMin = parseTimeToMinutes(startStr);
     const endMin = parseTimeToMinutes(endStr);
 
-    const avgCube = parseOptionalNumber(get("avg_cubic_inches_per_package"));
-    const service = parseOptionalNumber(get("service_time_minutes"));
+    const distance_miles = hasDistanceMilesColumn
+      ? parseOptionalNumber(get("distance_miles"))
+      : null;
+    if (distance_miles !== null && distance_miles >= 0) {
+      hasAnyDistanceMiles = true;
+    }
+
+    const avgCube = headerIndex.has("avg_cubic_inches_per_package")
+      ? parseOptionalNumber(get("avg_cubic_inches_per_package"))
+      : null;
+    const service = headerIndex.has("service_time_minutes")
+      ? parseOptionalNumber(get("service_time_minutes"))
+      : null;
 
     const rowNumber = r + 1; // include header row (1-based)
 
+    if (!route_id) {
+      errors.push({ row: rowNumber, field: "route_id", message: "route_id is required." });
+    }
     if (!anchor_id) {
       errors.push({ row: rowNumber, field: "anchor_id", message: "anchor_id is required." });
     }
@@ -201,6 +225,9 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
         field: "stop_type",
         message: 'stop_type must be "Anchor" or "Satellite".',
       });
+    }
+    if (!store_name) {
+      errors.push({ row: rowNumber, field: "store_name", message: "store_name is required." });
     }
     if (packages === null || packages < 0) {
       errors.push({
@@ -231,15 +258,13 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     }
 
     const row: SfsStoreUploadRow = {
-      route_id: get("route_id").trim(),
+      route_id,
       anchor_id,
       stop_type: stop_type ?? "Anchor",
-      store_name: get("store_name").trim(),
-      address: get("address").trim(),
-      city: get("city").trim(),
-      state: get("state").trim(),
-      zip: get("zip").trim(),
+      store_id: store_id || undefined,
+      store_name,
       packages: packages ?? 0,
+      distance_miles: distance_miles ?? undefined,
       avg_cubic_inches_per_package: avgCube,
       pickup_window_start_time: startStr.trim(),
       pickup_window_end_time: endStr.trim(),
@@ -249,8 +274,10 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     rows.push(row);
 
     if (
+      route_id &&
       anchor_id &&
       stop_type &&
+      store_name &&
       packages !== null &&
       packages >= 0 &&
       startMin !== null &&
@@ -267,75 +294,59 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     }
   }
 
-  return { ok: true, delimiter, rows, stops, errors };
+  // Dataset-level validation: exactly one Anchor row per anchor_id.
+  const anchorCounts = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.anchor_id) continue;
+    if (row.stop_type === "Anchor") {
+      anchorCounts.set(row.anchor_id, (anchorCounts.get(row.anchor_id) ?? 0) + 1);
+    } else if (!anchorCounts.has(row.anchor_id)) {
+      anchorCounts.set(row.anchor_id, 0);
+    }
+  }
+
+  for (const [anchorId, count] of anchorCounts.entries()) {
+    if (count === 0) {
+      errors.push({
+        row: 1,
+        message: `anchor_id "${anchorId}" must have exactly 1 Anchor row (found 0).`,
+      });
+    } else if (count > 1) {
+      errors.push({
+        row: 1,
+        message: `anchor_id "${anchorId}" must have exactly 1 Anchor row (found ${count}).`,
+      });
+    }
+  }
+
+  return {
+    ok: true,
+    delimiter,
+    rows,
+    stops,
+    errors,
+    hasDistanceMiles: hasAnyDistanceMiles,
+  };
 }
 
 export function getStoresTemplateCsv(): string {
-  const header = SFS_STORES_UPLOAD_HEADERS.join(",");
+  const header = [...SFS_STORES_UPLOAD_REQUIRED_HEADERS, ...SFS_STORES_UPLOAD_OPTIONAL_HEADERS].join(",");
+  // Header order: route_id, anchor_id, stop_type, store_name, packages, pickup_window_start_time, pickup_window_end_time,
+  //               store_id, distance_miles, avg_cubic_inches_per_package, service_time_minutes
   const examples = [
-    [
-      "R-001",
-      "A-100",
-      "Anchor",
-      "Anchor Store A",
-      "100 Main St",
-      "Chicago",
-      "IL",
-      "60601",
-      "120",
-      "1000",
-      "08:00",
-      "12:00",
-      "5",
-    ],
-    [
-      "R-001",
-      "A-100",
-      "Satellite",
-      "Satellite Store A1",
-      "200 State St",
-      "Chicago",
-      "IL",
-      "60602",
-      "40",
-      "",
-      "09:00",
-      "12:00",
-      "",
-    ],
-    [
-      "R-002",
-      "A-200",
-      "Anchor",
-      "Anchor Store B",
-      "10 Market St",
-      "Dallas",
-      "TX",
-      "75201",
-      "80",
-      "1200",
-      "07:30",
-      "10:30",
-      "4",
-    ],
-    [
-      "R-002",
-      "A-200",
-      "Satellite",
-      "Satellite Store B1",
-      "20 Elm St",
-      "Dallas",
-      "TX",
-      "75202",
-      "25",
-      "",
-      "08:00",
-      "10:00",
-      "",
-    ],
+    // route_id, anchor_id, stop_type, store_name, packages, start, end, store_id, distance_miles, avg_cube, service
+    ["R-001", "A-CHI-01", "Anchor", "Chicago Anchor", "180", "08:00", "12:00", "CHI_ANCHOR_001", "", "1000", "5"],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=10mi)", "60", "09:00", "12:00", "CHI_SAT_008", "8", "", ""],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=20mi)", "40", "09:15", "12:00", "CHI_SAT_016", "16", "", ""],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=30mi)", "25", "09:30", "12:00", "CHI_SAT_026", "26", "", ""],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (>30mi)", "15", "10:00", "12:00", "CHI_SAT_045", "45", "", ""],
+    ["R-002", "A-DAL-01", "Anchor", "Dallas Anchor", "140", "07:30", "11:00", "DAL_ANCHOR_001", "", "1100", "4"],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=10mi)", "55", "08:15", "11:00", "DAL_SAT_009", "9", "", ""],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=20mi)", "35", "08:30", "11:00", "DAL_SAT_018", "18", "", ""],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=30mi)", "25", "09:00", "11:00", "DAL_SAT_028", "28", "", ""],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (>30mi)", "15", "09:30", "11:00", "DAL_SAT_050", "50", "", ""],
   ];
 
   const body = examples.map((row) => row.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(",")).join("\n");
   return `${header}\n${body}\n`;
 }
-

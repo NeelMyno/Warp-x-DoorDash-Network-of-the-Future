@@ -3,13 +3,16 @@ import * as React from "react";
 import { SfsTabs, type SfsTabKey } from "./sfs-tabs";
 import { SfsCalculator, type SfsConfigError } from "./sfs-calculator";
 import { NarrativeModuleLayout, type NarrativeModuleLayoutProps } from "../layouts/narrative-module-layout";
-import type { SfsRateCard } from "@/lib/sfs-calculator/types";
+import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
 
 export interface SfsModuleLayoutProps extends NarrativeModuleLayoutProps {
   activeTab: SfsTabKey;
   rateCards: SfsRateCard[];
+  densityTiers?: SfsDensityTier[];
   /** Configuration error when table is missing or inaccessible */
   configError?: SfsConfigError | null;
+  /** Admin-only warnings when using fallbacks */
+  adminWarnings?: { densityTiers?: string } | null;
   /** Whether current user is admin (for showing setup link) */
   isAdmin?: boolean;
 }
@@ -25,7 +28,9 @@ export function SfsModuleLayout({
   sections,
   activeTab,
   rateCards,
+  densityTiers,
   configError,
+  adminWarnings,
   isAdmin = false,
 }: SfsModuleLayoutProps) {
   return (
@@ -47,7 +52,13 @@ export function SfsModuleLayout({
 
       {/* Tab content */}
       {activeTab === "calculator" ? (
-        <SfsCalculator rateCards={rateCards} configError={configError} isAdmin={isAdmin} />
+        <SfsCalculator
+          rateCards={rateCards}
+          densityTiers={densityTiers}
+          configError={configError}
+          adminWarnings={adminWarnings}
+          isAdmin={isAdmin}
+        />
       ) : (
         <NarrativeModuleLayout
           title="" // Already shown in header above
@@ -58,4 +69,3 @@ export function SfsModuleLayout({
     </div>
   );
 }
-

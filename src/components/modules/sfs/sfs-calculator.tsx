@@ -1,18 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   AlertCircle,
   ArrowDownToLine,
   ChevronDown,
   ChevronRight,
   FileUp,
-  HelpCircle,
   Settings,
   Sparkles,
-  TrendingDown,
 } from "lucide-react";
 
 import { ContentPanel } from "@/components/panels/ContentPanel";
@@ -21,37 +19,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import { computeSfsEconomics } from "@/lib/sfs-calculator/compute";
-import { validateSfsInputs } from "@/lib/sfs-calculator/validate";
 import type {
+  DistanceAssumptions,
+  DistanceMode,
   SfsCalculatorInputs,
+  SfsDensityTier,
   SfsRateCard,
   SfsStoreUploadError,
   SfsStoreUploadRow,
   SfsStop,
+  TierMixShares,
   VehicleType,
 } from "@/lib/sfs-calculator/types";
 import { DEFAULT_INPUTS, SFS_MARKETS } from "@/lib/sfs-calculator/types";
 import type { SfsRateCardsErrorReason } from "@/lib/sfs-calculator/get-rate-cards";
+import { validateSfsInputs } from "@/lib/sfs-calculator/validate";
 import {
-  generateDensityOutputText,
-  generateAllAnchorsOutputText,
   formatCurrency,
   formatPercent,
+  generateSalesSummaryText,
+  makeSatelliteResultsCsv,
 } from "@/lib/sfs-calculator/format";
 import { getStoresTemplateCsv, parseStoresUploadText } from "@/lib/sfs-calculator/parse-stores";
+import { computeSatelliteImpacts, type SfsSatelliteImpactSummary } from "@/lib/sfs-calculator/impact";
 import {
-  computeRegularVsDensity,
-  computePerSatelliteBenefitDeltas,
-  type RegularVsDensityResult,
-  type SatelliteBenefitDelta,
-} from "@/lib/sfs-calculator/derive-density-benefits";
+  AnchorListPanel,
+  AnchorSummaryPanel,
+  type AnchorListItem,
+  type SortOption,
+} from "@/components/modules/sfs/results";
 
 export interface SfsConfigError {
   reason: SfsRateCardsErrorReason;
@@ -62,6 +61,10 @@ interface Props {
   rateCards: SfsRateCard[];
   /** Configuration error when table is missing or inaccessible */
   configError?: SfsConfigError | null;
+  /** Density discount tiers (DB-backed, with fallback in server) */
+  densityTiers?: SfsDensityTier[];
+  /** Admin-only warning strings when using fallbacks */
+  adminWarnings?: { densityTiers?: string } | null;
   /** Whether current user is admin (for showing setup link and rates) */
   isAdmin?: boolean;
 }
@@ -78,16 +81,50 @@ function getInitialInputs(): SfsCalculatorInputs {
   };
 }
 
-export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props) {
+export function SfsCalculator({
+  rateCards,
+  configError,
+  densityTiers: initialDensityTiers = [],
+  adminWarnings = null,
+  isAdmin = false,
+}: Props) {
+
   const [inputs, setInputs] = React.useState<SfsCalculatorInputs>(() => getInitialInputs());
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
   const [uploadedRows, setUploadedRows] = React.useState<SfsStoreUploadRow[] | null>(null);
   const [uploadedStops, setUploadedStops] = React.useState<SfsStop[] | null>(null);
   const [uploadErrors, setUploadErrors] = React.useState<SfsStoreUploadError[]>([]);
+  const [hasDistanceMiles, setHasDistanceMiles] = React.useState(false);
   const [selectedAnchorId, setSelectedAnchorId] = React.useState<string | null>(null);
   const [assumptionsExpanded, setAssumptionsExpanded] = React.useState(false);
   const [ratesExpanded, setRatesExpanded] = React.useState(false);
-  const [detailsExpanded, setDetailsExpanded] = React.useState(false);
+  const [diagnosticsExpanded, setDiagnosticsExpanded] = React.useState(false);
+  const [densityTiers, setDensityTiers] = React.useState<SfsDensityTier[]>(() => initialDensityTiers);
+
+  // Distance mode state
+  const [distanceMode, setDistanceMode] = React.useState<DistanceMode>("average");
+  const [avgMiles, setAvgMiles] = React.useState<number>(10);
+  const [storeSearchQuery, setStoreSearchQuery] = React.useState<string>("");
+  const [tierMix, setTierMix] = React.useState<TierMixShares>({ le10: 25, le20: 25, le30: 25, gt30: 25 });
+
+  const [impactSummary, setImpactSummary] = React.useState<SfsSatelliteImpactSummary | null>(null);
+  const [impactError, setImpactError] = React.useState<string | null>(null);
+  const [impactPending, startImpactTransition] = React.useTransition();
+
+  // Results sorting
+  const [resultsSortBy, setResultsSortBy] = React.useState<SortOption>("cpp");
+
+  React.useEffect(() => {
+    setDensityTiers((prev) => (prev.length ? prev : initialDensityTiers));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-detect distance mode from CSV
+  React.useEffect(() => {
+    if (hasDistanceMiles) {
+      setDistanceMode("per_store");
+    }
+  }, [hasDistanceMiles]);
 
   const validationErrors = validateSfsInputs(inputs);
   const hasErrors = Object.keys(validationErrors).length > 0;
@@ -103,43 +140,68 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
     [rateCards, inputs.vehicle_type],
   );
 
+  // Build distance assumptions from current state
+  const distanceAssumptions = React.useMemo<DistanceAssumptions>(() => {
+    if (distanceMode === "per_store") {
+      return { mode: "per_store" };
+    }
+    if (distanceMode === "tier_mix") {
+      return { mode: "tier_mix", tierMix };
+    }
+    return { mode: "average", avgMiles };
+  }, [distanceMode, avgMiles, tierMix]);
+
   const canCompute =
-    !configError &&
     !!rateCard &&
     !hasErrors &&
     !!uploadedStops &&
     uploadErrors.length === 0 &&
     uploadedStops.length > 0;
 
-  const anchorResults = React.useMemo(() => {
-    if (!canCompute || !uploadedStops || !rateCard) return [];
-    return computeSfsEconomics(inputs, uploadedStops, rateCard);
-  }, [canCompute, inputs, uploadedStops, rateCard]);
-
-  // Compute density results for all anchors (memoized)
-  const densityResults = React.useMemo<Map<string, RegularVsDensityResult>>(() => {
-    const map = new Map<string, RegularVsDensityResult>();
-    if (!canCompute || !uploadedStops || !rateCard) return map;
-    for (const r of anchorResults) {
-      const dr = computeRegularVsDensity(inputs, uploadedStops, rateCard, r.anchor_id);
-      if (dr) map.set(r.anchor_id, dr);
+  const computed = React.useMemo(() => {
+    if (!canCompute || !uploadedStops || !rateCard) {
+      return { results: [], error: null as Error | null };
     }
-    return map;
-  }, [canCompute, inputs, uploadedStops, rateCard, anchorResults]);
+    try {
+      return {
+        results: computeSfsEconomics(inputs, uploadedStops, rateCard, {
+          densityTiers,
+          distanceAssumptions,
+        }),
+        error: null,
+      };
+    } catch (err) {
+      return { results: [], error: err instanceof Error ? err : new Error("Unknown compute error") };
+    }
+  }, [canCompute, densityTiers, distanceAssumptions, inputs, rateCard, uploadedStops]);
 
-  // Sort anchors by best "with density" CPP (lowest first)
-  const sortedAnchors = React.useMemo(() => {
-    return [...anchorResults].sort((a, b) => {
-      const aDr = densityResults.get(a.anchor_id);
-      const bDr = densityResults.get(b.anchor_id);
-      const aCpp = aDr?.withDensityCpp ?? Infinity;
-      const bCpp = bDr?.withDensityCpp ?? Infinity;
-      if (aCpp !== bCpp) return aCpp - bCpp;
-      return a.anchor_id.localeCompare(b.anchor_id);
+  const anchorResults = computed.results;
+  const computeError = computed.error;
+
+  // Build anchor list items for the new results UI
+  const anchorListItems: AnchorListItem[] = React.useMemo(() => {
+    return anchorResults.map((r) => {
+      const regularCost = r.base_portion_before_density + r.stop_fees_total;
+      const regularCpp = r.total_packages > 0 ? regularCost / r.total_packages : 0;
+      const withDensityCpp = r.blended_cpp;
+      const savingsCpp = Math.max(0, regularCpp - withDensityCpp);
+      const savingsPct = regularCpp > 0 ? savingsCpp / regularCpp : 0;
+      return {
+        anchor_id: r.anchor_id,
+        regularCpp,
+        withDensityCpp,
+        savingsCpp,
+        savingsPct,
+        totalPackages: r.total_packages,
+      };
     });
-  }, [anchorResults, densityResults]);
+  }, [anchorResults]);
 
-  // Auto-select best anchor
+  // Keep legacy sorted anchors for auto-selection
+  const sortedAnchors = React.useMemo(() => {
+    return [...anchorListItems].sort((a, b) => a.withDensityCpp - b.withDensityCpp);
+  }, [anchorListItems]);
+
   React.useEffect(() => {
     if (!sortedAnchors.length) {
       setSelectedAnchorId(null);
@@ -149,16 +211,49 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
     setSelectedAnchorId(sortedAnchors[0].anchor_id);
   }, [sortedAnchors, selectedAnchorId]);
 
-  const selectedDensityResult = React.useMemo(() => {
+  const selectedResult = React.useMemo(() => {
     if (!selectedAnchorId) return null;
-    return densityResults.get(selectedAnchorId) ?? null;
-  }, [densityResults, selectedAnchorId]);
+    return anchorResults.find((r) => r.anchor_id === selectedAnchorId) ?? null;
+  }, [anchorResults, selectedAnchorId]);
 
-  // Compute per-satellite deltas for selected anchor (lazy/memoized)
-  const satelliteDeltas = React.useMemo<SatelliteBenefitDelta[]>(() => {
-    if (!selectedAnchorId || !canCompute || !uploadedStops || !rateCard) return [];
-    return computePerSatelliteBenefitDeltas(inputs, uploadedStops, rateCard, selectedAnchorId);
-  }, [selectedAnchorId, canCompute, inputs, uploadedStops, rateCard]);
+  const selectedAnchorStops = React.useMemo(() => {
+    if (!uploadedStops || !selectedAnchorId) return null;
+    return uploadedStops.filter((s) => s.anchor_id === selectedAnchorId);
+  }, [uploadedStops, selectedAnchorId]);
+
+  React.useEffect(() => {
+    if (!canCompute || !selectedAnchorId || !selectedAnchorStops || !rateCard) {
+      setImpactSummary(null);
+      setImpactError(null);
+      return;
+    }
+
+    startImpactTransition(() => {
+      try {
+        setImpactError(null);
+        const computedImpact = computeSatelliteImpacts({
+          inputs,
+          anchorId: selectedAnchorId,
+          anchorStops: selectedAnchorStops,
+          rateCard,
+          densityTiers,
+          distanceAssumptions,
+        });
+        setImpactSummary(computedImpact.summary);
+      } catch (e) {
+        setImpactSummary(null);
+        setImpactError(e instanceof Error ? e.message : "Unable to compute satellite impacts");
+      }
+    });
+  }, [
+    canCompute,
+    densityTiers,
+    distanceAssumptions,
+    inputs,
+    rateCard,
+    selectedAnchorId,
+    selectedAnchorStops,
+  ]);
 
   const uploadSummary = React.useMemo(() => {
     if (!uploadedStops) return null;
@@ -179,6 +274,11 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
     setUploadedRows(null);
     setUploadedStops(null);
     setUploadErrors([]);
+    setHasDistanceMiles(false);
+    setDistanceMode("average");
+    setAvgMiles(10);
+    setStoreSearchQuery("");
+    setTierMix({ le10: 25, le20: 25, le30: 25, gt30: 25 });
     setSelectedAnchorId(null);
     toast.success("Reset complete");
   };
@@ -205,6 +305,7 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
       setUploadedRows(null);
       setUploadedStops(null);
       setUploadErrors(parsed.errors);
+      setHasDistanceMiles(false);
       toast.error("Upload failed");
       return;
     }
@@ -212,6 +313,7 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
     setUploadedRows(parsed.rows);
     setUploadedStops(parsed.stops);
     setUploadErrors(parsed.errors);
+    setHasDistanceMiles(parsed.hasDistanceMiles);
 
     if (parsed.errors.length) {
       toast.error(`Uploaded with ${parsed.errors.length} validation error(s)`);
@@ -220,51 +322,13 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
     }
   };
 
-  // Configuration error state (table missing, RLS, etc.)
-  if (configError) {
-    const title =
-      configError.reason === "MISSING_TABLE"
-        ? "SFS calculator isn't configured yet"
-        : "Unable to load rate cards";
-    const body =
-      configError.reason === "MISSING_TABLE"
-        ? "Rate cards table is missing or not configured. Run the migration to set up the database."
-        : configError.message;
-
-    return (
-      <ContentPanel
-        title={title}
-        right={
-          isAdmin ? (
-            <Link
-              href="/admin?tab=setup"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background"
-            >
-              <Settings className="h-3 w-3" />
-              Go to Admin → Setup
-            </Link>
-          ) : (
-            <Badge variant="outline" className="text-[11px] text-muted-foreground">
-              Admin required
-            </Badge>
-          )
-        }
-      >
-        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-          <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />
-          <p>{body}</p>
-        </div>
-      </ContentPanel>
-    );
-  }
-
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-4">
-        {/* Step 1: Upload */}
+        {/* Step 1 */}
         <ContentPanel
           title="1) Upload stores"
-          description="Upload anchor and satellite store data."
+          description="Upload anchor + satellite stores. Include optional distance_miles column, or set average miles in Step 2."
           right={
             <div className="flex items-center gap-2">
               <Button
@@ -297,17 +361,14 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="file"
-                accept=".csv,.tsv,text/csv,text/tab-separated-values"
-                onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
-                className="h-9 w-full max-w-[280px] cursor-pointer"
-              />
-            </div>
+            <Input
+              type="file"
+              accept=".csv,.tsv,text/csv,text/tab-separated-values"
+              onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
+              className="h-9 w-full max-w-[280px] cursor-pointer"
+            />
           </div>
 
-          {/* Upload Summary Stats */}
           {uploadSummary && !uploadErrors.length ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               {[
@@ -334,54 +395,91 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
                 Please fix the following issues
               </div>
               <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                {uploadErrors.slice(0, 5).map((err, idx) => (
+                {uploadErrors.slice(0, 8).map((err, idx) => (
                   <li key={`${err.row}-${idx}`} className="flex gap-2">
                     <span className="w-12 shrink-0 font-mono text-foreground/70">Row {err.row}</span>
                     <span>{err.message}</span>
                   </li>
                 ))}
-                {uploadErrors.length > 5 ? (
+                {uploadErrors.length > 8 ? (
                   <li className="text-xs text-muted-foreground">
-                    …and {uploadErrors.length - 5} more issues.
+                    …and {uploadErrors.length - 8} more issues.
                   </li>
                 ) : null}
               </ul>
             </div>
           ) : null}
 
+          {isAdmin && adminWarnings?.densityTiers ? (
+            <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
+              <div className="text-xs font-medium text-foreground">Admin notice</div>
+              <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                <li>• {adminWarnings.densityTiers}</li>
+              </ul>
+            </div>
+          ) : null}
+
           {uploadedRows?.length ? (
-            <details className="mt-4 group">
+            <details className="mt-4 group" open>
               <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                 View uploaded rows ({uploadedRows.length})
               </summary>
-              <div className="mt-2 overflow-x-auto rounded-xl border border-border bg-background/10">
-                <table className="w-full text-xs">
-                  <thead className="border-b border-border/60">
-                    <tr className="text-left text-muted-foreground">
-                      <th className="px-3 py-2">anchor_id</th>
-                      <th className="px-3 py-2">stop_type</th>
-                      <th className="px-3 py-2">store_name</th>
-                      <th className="px-3 py-2 text-right">packages</th>
-                      <th className="px-3 py-2">window</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {uploadedRows.slice(0, 15).map((row, idx) => (
-                      <tr key={`${row.anchor_id}-${idx}`} className="text-foreground/90">
-                        <td className="px-3 py-2 font-mono">{row.anchor_id}</td>
-                        <td className="px-3 py-2">{row.stop_type}</td>
-                        <td className="px-3 py-2">{row.store_name || "—"}</td>
-                        <td className="px-3 py-2 text-right font-mono">{row.packages}</td>
-                        <td className="px-3 py-2 font-mono text-muted-foreground">
-                          {row.pickup_window_start_time}–{row.pickup_window_end_time}
-                        </td>
+              <div className="mt-2 space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Search by anchor, store name, or ID..."
+                  value={storeSearchQuery}
+                  onChange={(e) => setStoreSearchQuery(e.target.value)}
+                  className="h-8 max-w-xs text-xs"
+                />
+                <div className="max-h-[300px] overflow-auto rounded-xl border border-border bg-background/10">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 border-b border-border/60 bg-background/95 backdrop-blur">
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-3 py-2">anchor_id</th>
+                        <th className="px-3 py-2">stop_type</th>
+                        <th className="px-3 py-2">store_name</th>
+                        <th className="px-3 py-2">store_id</th>
+                        <th className="px-3 py-2 text-right">packages</th>
+                        {hasDistanceMiles && <th className="px-3 py-2 text-right">distance_miles</th>}
+                        <th className="px-3 py-2">window</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {uploadedRows.length > 15 ? (
-                  <div className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                    Showing first 15 of {uploadedRows.length} rows.
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {(() => {
+                        const q = storeSearchQuery.toLowerCase().trim();
+                        const filtered = q
+                          ? uploadedRows.filter(
+                              (r) =>
+                                r.anchor_id.toLowerCase().includes(q) ||
+                                (r.store_name?.toLowerCase().includes(q) ?? false) ||
+                                (r.store_id?.toLowerCase().includes(q) ?? false)
+                            )
+                          : uploadedRows;
+                        return filtered.slice(0, 50).map((row, idx) => (
+                          <tr key={`${row.anchor_id}-${idx}`} className="text-foreground/90">
+                            <td className="px-3 py-2 font-mono">{row.anchor_id}</td>
+                            <td className="px-3 py-2">{row.stop_type}</td>
+                            <td className="px-3 py-2">{row.store_name || "—"}</td>
+                            <td className="px-3 py-2 font-mono text-muted-foreground">{row.store_id}</td>
+                            <td className="px-3 py-2 text-right font-mono">{row.packages}</td>
+                            {hasDistanceMiles && (
+                              <td className="px-3 py-2 text-right font-mono">
+                                {row.distance_miles != null ? row.distance_miles.toFixed(1) : "—"}
+                              </td>
+                            )}
+                            <td className="px-3 py-2 font-mono text-muted-foreground">
+                              {row.pickup_window_start_time}–{row.pickup_window_end_time}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+                {uploadedRows.length > 50 && !storeSearchQuery ? (
+                  <div className="text-xs text-muted-foreground">
+                    Showing first 50 of {uploadedRows.length} rows. Use search to filter.
                   </div>
                 ) : null}
               </div>
@@ -393,10 +491,10 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
           )}
         </ContentPanel>
 
-        {/* Step 2: Route Settings */}
+        {/* Step 2 */}
         <ContentPanel
-          title="2) Route settings"
-          description="Choose your market and vehicle."
+          title="2) Route assumptions"
+          description="Choose market & vehicle. These affect baseline costs. (Admins can edit rates.)"
           right={
             rateCard ? (
               <Badge variant="outline" className="text-[11px]">
@@ -409,6 +507,26 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
             )
           }
         >
+          {isAdmin && configError ? (
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Using default rates</div>
+                  <div className="mt-1">
+                    Rate cards table isn’t available ({configError.reason}). Calculator will use the default vehicle
+                    rates for now.
+                  </div>
+                  <div className="mt-2">
+                    <Link href="/admin?tab=setup" className="underline hover:text-foreground">
+                      Configure in Admin → Setup
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-[11px] text-muted-foreground">Market</Label>
@@ -457,6 +575,162 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
             </div>
           </div>
 
+          {/* Density discount distances */}
+          <div className="mt-4 rounded-lg border border-border bg-background/10 p-4">
+            <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              Density discount distances
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Used only to estimate density savings. Stop fees are never discounted.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                { value: "per_store" as const, label: "Per-store (from CSV)", disabled: !hasDistanceMiles },
+                { value: "average" as const, label: "Average miles" },
+                { value: "tier_mix" as const, label: "Tier mix %" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={opt.disabled}
+                  onClick={() => setDistanceMode(opt.value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    distanceMode === opt.value
+                      ? "bg-[var(--warp-primary)] text-white"
+                      : opt.disabled
+                        ? "bg-background/20 text-muted-foreground/50 cursor-not-allowed"
+                        : "bg-background/20 text-muted-foreground hover:bg-background/30"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {distanceMode === "per_store" && (
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Using <span className="font-mono text-foreground">distance_miles</span> column from your CSV.
+              </p>
+            )}
+
+            {!hasDistanceMiles && distanceMode !== "per_store" && (
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">Tip:</span> Add a <span className="font-mono">distance_miles</span> column to your CSV for per-store distances.
+              </p>
+            )}
+
+            {distanceMode === "average" && (
+              <div className="mt-3 flex items-center gap-2">
+                <Label className="text-[11px] text-muted-foreground whitespace-nowrap">Avg distance (mi)</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={avgMiles}
+                  onChange={(e) => setAvgMiles(Math.max(0, Number(e.target.value) || 0))}
+                  className="h-8 w-24 text-right font-mono"
+                />
+              </div>
+            )}
+
+            {distanceMode === "tier_mix" && (
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { key: "le10" as const, label: "≤10 mi" },
+                    { key: "le20" as const, label: "10–20 mi" },
+                    { key: "le30" as const, label: "20–30 mi" },
+                    { key: "gt30" as const, label: ">30 mi" },
+                  ].map((tier) => (
+                    <div key={tier.key} className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">{tier.label}</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={tierMix[tier.key]}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                            setTierMix((prev) => ({ ...prev, [tier.key]: v }));
+                          }}
+                          className="h-8 text-right font-mono"
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {(() => {
+                  const total = tierMix.le10 + tierMix.le20 + tierMix.le30 + tierMix.gt30;
+                  const isClose = total >= 99.5 && total <= 100.5 && total !== 100;
+                  const isOff = total < 99.5 || total > 100.5;
+                  return (
+                    <div className="flex items-center gap-2">
+                      {isOff && (
+                        <p className="text-[11px] text-amber-500">
+                          Total is {total}% — should be 100%.
+                        </p>
+                      )}
+                      {isClose && (
+                        <>
+                          <p className="text-[11px] text-muted-foreground">
+                            Total is {total}% — close enough, will normalize.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px]"
+                            onClick={() => {
+                              const sum = tierMix.le10 + tierMix.le20 + tierMix.le30 + tierMix.gt30;
+                              if (sum === 0) return;
+                              setTierMix({
+                                le10: Math.round((tierMix.le10 / sum) * 100),
+                                le20: Math.round((tierMix.le20 / sum) * 100),
+                                le30: Math.round((tierMix.le30 / sum) * 100),
+                                gt30: 100 - Math.round((tierMix.le10 / sum) * 100) - Math.round((tierMix.le20 / sum) * 100) - Math.round((tierMix.le30 / sum) * 100),
+                              });
+                            }}
+                          >
+                            Normalize
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Always show discount tier table */}
+            <div className="mt-4 pt-3 border-t border-border/60">
+              <div className="text-[11px] text-muted-foreground mb-2">Discount by distance tier:</div>
+              <div
+                className="grid overflow-hidden rounded-lg border border-border/60 bg-background/10"
+                style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
+              >
+                {[
+                  { label: "≤10 mi", discount: "20%" },
+                  { label: "10–20 mi", discount: "12%" },
+                  { label: "20–30 mi", discount: "6%" },
+                  { label: ">30 mi", discount: "0%" },
+                ].map((t, idx) => (
+                  <div
+                    key={t.label}
+                    className={`px-3 py-2 ${idx < 3 ? "border-r border-border/60" : ""}`}
+                  >
+                    <div className="text-[11px] font-medium text-foreground">{t.label}</div>
+                    <div className="text-[11px] font-mono text-muted-foreground">{t.discount}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Collapsible Assumptions (advanced) */}
           <div className="mt-4">
             <button
@@ -474,19 +748,24 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
             </button>
             {assumptionsExpanded ? (
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-	                {[
-	                  { key: "miles_to_hub_or_spoke", label: "Miles to hub/spoke" },
-	                  { key: "avg_routing_time_per_stop_minutes", label: "Time between stops" },
-	                  { key: "default_service_time_minutes", label: "Time per stop" },
-	                  { key: "max_driver_time_minutes", label: "Max driver time (min)", locked: true, lockedValue: 480 },
-	                  { key: "avg_speed_mph", label: "Avg speed (mph)" },
-	                  { key: "default_avg_cubic_inches_per_package", label: "Default avg cube / package (cu in)" },
-	                ].map((field) => {
+                {[
+                  { key: "miles_to_hub_or_spoke", label: "Miles to hub/spoke" },
+                  { key: "avg_routing_time_per_stop_minutes", label: "Time between stops" },
+                  { key: "default_service_time_minutes", label: "Time per stop" },
+                  { key: "max_driver_time_minutes", label: "Max driver time (min)", locked: true, lockedValue: 480 },
+                  { key: "avg_speed_mph", label: "Avg speed (mph)" },
+                  { key: "default_avg_cubic_inches_per_package", label: "Default avg cube / package (cu in)" },
+                ].map((field) => {
                   const key = field.key as keyof SfsCalculatorInputs;
                   const err = validationErrors[key as string];
                   const value = inputs[key];
                   const isLocked = "locked" in field && field.locked;
-                  const displayValue = isLocked && "lockedValue" in field ? field.lockedValue : (typeof value === "number" ? value : 0);
+                  const displayValue =
+                    isLocked && "lockedValue" in field
+                      ? field.lockedValue
+                      : typeof value === "number"
+                        ? value
+                        : 0;
                   return (
                     <div key={field.key} className="space-y-1">
                       <Label className="text-[11px] text-muted-foreground">{field.label}</Label>
@@ -505,7 +784,9 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
                         className={[
                           err ? "border-[var(--warp-field-error)]" : "",
                           isLocked ? "cursor-not-allowed opacity-60" : "",
-                        ].filter(Boolean).join(" ")}
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                       />
                       {err ? <p className="text-[10px] text-[var(--warp-danger)]">{err}</p> : null}
                     </div>
@@ -515,7 +796,7 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
             ) : null}
           </div>
 
-          {/* Admin-only Rates Applied - completely hidden for non-admins */}
+          {/* Admin-only Rates Applied */}
           {isAdmin ? (
             <div className="mt-4">
               <button
@@ -550,7 +831,7 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
                         <span>Per stop (satellite)</span>
                         <span className="font-mono text-foreground">{formatCurrency(rateCard.per_stop_rate)}</span>
                       </div>
-                      <div className="mt-2 pt-2 border-t border-border/60">
+                      <div className="mt-2 border-t border-border/60 pt-2">
                         <Link href="/admin?tab=setup" className="text-xs underline hover:text-foreground">
                           Edit in Admin → Setup
                         </Link>
@@ -572,10 +853,10 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
           ) : null}
         </ContentPanel>
 
-        {/* Step 3: Results */}
+        {/* Step 3 */}
         <ContentPanel
-          title="3) Results"
-          description="Compare costs with and without density benefits."
+          title="3) Savings & pricing"
+          description="See Regular cost vs With density discount, plus per-store impact."
           right={
             <div className="flex items-center gap-2">
               <Button
@@ -583,34 +864,43 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
                 variant="outline"
                 size="sm"
                 className="h-8"
-                disabled={!selectedDensityResult || !canCompute}
+                disabled={!impactSummary || !canCompute || !!computeError || impactPending}
                 onClick={async () => {
-                  if (!selectedDensityResult) return;
-                  const text = generateDensityOutputText({
+                  if (!selectedResult || !impactSummary) return;
+                  const text = generateSalesSummaryText({
                     inputs,
-                    densityResult: selectedDensityResult,
-                    satelliteDeltas,
+                    selected: selectedResult,
+                    summary: impactSummary,
                   });
                   await navigator.clipboard.writeText(text);
-                  toast.success(`Copied output for ${selectedDensityResult.anchorId}`);
+                  toast.success(`Copied summary for ${selectedResult.anchor_id}`);
                 }}
               >
-                Copy selected
+                Copy summary
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="h-8"
-                disabled={!canCompute || densityResults.size === 0}
-                onClick={async () => {
-                  const allResults = Array.from(densityResults.values());
-                  const text = generateAllAnchorsOutputText(inputs, allResults);
-                  await navigator.clipboard.writeText(text);
-                  toast.success("Copied output for all anchors");
+                disabled={!impactSummary || !impactSummary?.impacts?.length || !!computeError || impactPending}
+                onClick={() => {
+                  if (!impactSummary) return;
+                  const csv = makeSatelliteResultsCsv({
+                    inputs,
+                    summary: impactSummary,
+                  });
+                  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `sfs-satellite-results-${impactSummary.anchor_id}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("Downloaded results CSV");
                 }}
               >
-                Copy all
+                Download results CSV
               </Button>
             </div>
           }
@@ -629,268 +919,134 @@ export function SfsCalculator({ rateCards, configError, isAdmin = false }: Props
                       ? "Fix input errors above to see results."
                       : "No data available."}
             </div>
-          ) : anchorResults.length === 0 ? (
+          ) : computeError ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground">Unable to compute</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {computeError.message}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : sortedAnchors.length === 0 ? (
             <div className="rounded-xl border border-border bg-background/10 p-6 text-center text-sm text-muted-foreground">
               No anchors found in uploaded data.
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-12">
-              {/* Anchor list - simplified */}
+            <div className="grid items-stretch gap-6 lg:grid-cols-12">
+              {/* Left panel: Anchor list */}
               <div className="lg:col-span-4">
-                <div className="mb-2 text-xs text-muted-foreground">
-                  Sorted by best cost with density benefits
-                </div>
-                <div className="space-y-2">
-                  {sortedAnchors.map((row) => {
-                    const isActive = row.anchor_id === selectedAnchorId;
-                    const dr = densityResults.get(row.anchor_id);
-                    const withDensityCpp = dr?.withDensityCpp ?? row.blended_cpp;
-                    const hasBenefit = dr?.hasDensityBenefit ?? false;
-                    return (
-                      <button
-                        key={row.anchor_id}
-                        type="button"
-                        onClick={() => setSelectedAnchorId(row.anchor_id)}
-                        className={[
-                          "w-full rounded-xl border px-3 py-2.5 text-left transition",
-                          isActive
-                            ? "border-primary/40 bg-primary/10"
-                            : "border-border bg-background/10 hover:bg-background/15",
-                        ].join(" ")}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-mono text-xs text-foreground">{row.anchor_id}</div>
-                          {hasBenefit ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warp-success-soft)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--warp-success-strong)]">
-                              <Sparkles className="h-2.5 w-2.5" />
-                              Density benefit
-                            </span>
-                          ) : (
-                            <span className="text-[9px] text-muted-foreground">Regular cost</span>
-                          )}
-                        </div>
-                        <div className="mt-1.5 flex items-baseline justify-between">
-                          <span className="text-[10px] text-muted-foreground">CPP</span>
-                          <span className="font-mono text-sm font-semibold text-foreground">
-                            {row.total_packages > 0 ? formatCurrency(withDensityCpp) : "N/A"}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <AnchorListPanel
+                  anchors={anchorListItems}
+                  selectedAnchorId={selectedAnchorId}
+                  onSelect={setSelectedAnchorId}
+                  sortBy={resultsSortBy}
+                  onSortChange={setResultsSortBy}
+                />
               </div>
 
-              {/* Selected anchor details - cost-focused */}
+              {/* Right panel: Summary */}
               <div className="lg:col-span-8">
-                {selectedDensityResult ? (
-                  <div className="space-y-4">
-                    {/* Primary Cost Summary */}
-                    <div className="rounded-xl border border-border bg-background/10 p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
+                {!selectedResult ? (
+                  <div className="rounded-xl border border-border bg-background/10 p-6 text-center text-sm text-muted-foreground">
+                    Select an anchor to see results.
+                  </div>
+                ) : impactError ? (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Error:</span> {impactError}
+                  </div>
+                ) : !impactSummary ? (
+                  <div className="rounded-xl border border-border bg-background/10 p-6 text-center text-sm text-muted-foreground">
+                    {impactPending ? "Computing…" : "No results available."}
+                  </div>
+                ) : (
+                  <AnchorSummaryPanel
+                    inputs={inputs}
+                    result={selectedResult}
+                    summary={impactSummary}
+                  />
+                )}
+
+                {/* Admin diagnostics - collapsed */}
+                {isAdmin && selectedResult && impactSummary && (
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setDiagnosticsExpanded(!diagnosticsExpanded)}
+                      className="flex w-full items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-amber-500/10"
+                      aria-expanded={diagnosticsExpanded}
+                    >
+                      {diagnosticsExpanded ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                      <span className="flex items-center gap-1.5">
+                        <Settings className="h-3 w-3" />
+                        Admin: Diagnostics
+                      </span>
+                    </button>
+                    {diagnosticsExpanded && (
+                      <div className="mt-3 space-y-3">
+                        <div className="rounded-lg border border-border bg-background/10 p-3">
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            Anchor
+                            Tier contributions (share × discount)
                           </div>
-                          <div className="mt-0.5 font-mono text-base font-semibold text-foreground">
-                            {selectedDensityResult.anchorId}
+                          <div className="mt-2 overflow-x-auto rounded-lg border border-border/60 bg-background/10">
+                            <table className="w-full text-xs">
+                              <thead className="border-b border-border/60 text-left text-muted-foreground">
+                                <tr>
+                                  <th className="px-3 py-2">Tier</th>
+                                  <th className="px-3 py-2 text-right">Discount</th>
+                                  <th className="px-3 py-2 text-right">Share</th>
+                                  <th className="px-3 py-2 text-right">Contribution</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/40">
+                                {impactSummary.tier_distribution.map((t) => (
+                                  <tr key={t.label} className="text-foreground/90">
+                                    <td className="px-3 py-2">{t.label}</td>
+                                    <td className="px-3 py-2 text-right font-mono">{formatPercent(t.discountPct)}</td>
+                                    <td className="px-3 py-2 text-right font-mono">{formatPercent(t.satelliteShare)}</td>
+                                    <td className="px-3 py-2 text-right font-mono">
+                                      {formatPercent(t.contributionPctPoints)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                        {selectedDensityResult.hasDensityBenefit ? (
-                          <Badge variant="accent" className="text-[11px]">
-                            <Sparkles className="mr-1 h-3 w-3" />
-                            Density benefit
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[11px]">
-                            Regular costs
-                          </Badge>
-                        )}
-                      </div>
 
-                      {/* Big number: With density CPP */}
-                      <div className="mt-4">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          With density benefits CPP
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button type="button" className="rounded p-0.5 hover:bg-background/20">
-                                <HelpCircle className="h-3 w-3" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[240px] text-xs">
-                              Cost per package when satellites are added to the route, spreading fixed costs across more packages.
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <div className="mt-1 text-3xl font-bold tracking-tight text-foreground">
-                          {selectedDensityResult.fullResult.total_packages > 0
-                            ? formatCurrency(selectedDensityResult.withDensityCpp)
-                            : "N/A"}
-                        </div>
-                      </div>
-
-                      {/* Comparison row */}
-                      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border/60 pt-4">
-                        <div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                            Regular CPP
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button type="button" className="rounded p-0.5 hover:bg-background/20">
-                                  <HelpCircle className="h-2.5 w-2.5" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-[240px] text-xs">
-                                Cost per package for anchor-only (baseline without satellites).
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                          <div className="mt-0.5 font-mono text-sm text-foreground">
-                            {selectedDensityResult.regularCpp > 0
-                              ? formatCurrency(selectedDensityResult.regularCpp)
-                              : "N/A"}
-                          </div>
-                        </div>
-                        <div
-                          className={[
-                            "rounded-lg px-3 py-1.5",
-                            selectedDensityResult.hasDensityBenefit
-                              ? "bg-[var(--warp-success-soft)]"
-                              : "bg-muted/20",
-                          ].join(" ")}
-                        >
-                          <div className="text-[10px] text-muted-foreground">Savings</div>
-                          <div
-                            className={[
-                              "flex items-center gap-1.5 font-mono text-sm font-semibold",
-                              selectedDensityResult.hasDensityBenefit
-                                ? "text-[var(--warp-success-strong)]"
-                                : "text-muted-foreground",
-                            ].join(" ")}
-                          >
-                            {selectedDensityResult.hasDensityBenefit ? (
-                              <>
-                                <TrendingDown className="h-3.5 w-3.5" />
-                                {formatCurrency(selectedDensityResult.savingsAmount)} ({formatPercent(selectedDensityResult.savingsPercent)})
-                              </>
-                            ) : (
-                              "No density savings"
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Store additions impact */}
-                    {satelliteDeltas.length > 0 ? (
-                      <div className="rounded-xl border border-border bg-background/10 p-4">
-                        <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                          Store additions impact
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button type="button" className="rounded p-0.5 hover:bg-background/20">
-                                <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[280px] text-xs">
-                              Shows whether each satellite store creates a density benefit (lower CPP) or adds at regular cost.
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {satelliteDeltas.map((sat, idx) => (
-                            <div
-                              key={`${sat.storeName}-${idx}`}
-                              className="flex items-center justify-between rounded-lg border border-border bg-background/10 px-3 py-2"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-xs font-medium text-foreground">
-                                  {sat.storeName}
-                                </div>
-                                <div className="mt-0.5 text-[10px] text-muted-foreground">
-                                  {sat.packages} pkgs
-                                </div>
-                              </div>
-                              <div className="ml-3 shrink-0 text-right">
-                                {sat.hasBenefit ? (
-                                  <>
-                                    <div className="flex items-center gap-1 text-xs font-medium text-[var(--warp-success-strong)]">
-                                      <Sparkles className="h-3 w-3" />
-                                      Density benefit
-                                    </div>
-                                    <div className="mt-0.5 text-[10px] text-muted-foreground">
-                                      CPP change: {formatCurrency(sat.benefitDelta)}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground">Regular cost</div>
-                                )}
-                              </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {[
+                            { label: "Base portion (no density)", value: formatCurrency(selectedResult.base_portion_before_density) },
+                            { label: "Base portion (after density)", value: formatCurrency(selectedResult.base_portion_after_density) },
+                            { label: "Stop fees unchanged", value: formatCurrency(selectedResult.stop_fees_total) },
+                            { label: "Pickup overlap (min)", value: String(Math.round(selectedResult.pickup_overlap_minutes)) },
+                            { label: "Pickup required (min)", value: String(Math.round(selectedResult.pickup_minutes_required)) },
+                            { label: "Window feasible", value: selectedResult.window_feasible ? "Yes" : "No" },
+                          ].map((item) => (
+                            <div key={item.label} className="rounded-lg border border-border bg-background/10 px-3 py-2">
+                              <div className="text-[10px] text-muted-foreground">{item.label}</div>
+                              <div className="mt-1 font-mono text-sm text-foreground">{item.value}</div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    ) : null}
 
-                    {/* Summary stats for non-admins */}
-                    <div className="flex flex-wrap gap-3 text-xs">
-                      <div className="rounded-lg border border-border bg-background/10 px-3 py-2">
-                        <span className="text-muted-foreground">Total packages:</span>{" "}
-                        <span className="font-mono font-medium text-foreground">
-                          {selectedDensityResult.fullResult.total_packages}
-                        </span>
-                      </div>
-                      <div className="rounded-lg border border-border bg-background/10 px-3 py-2">
-                        <span className="text-muted-foreground">Total stops:</span>{" "}
-                        <span className="font-mono font-medium text-foreground">
-                          {selectedDensityResult.fullResult.total_stops}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Operational details - admin only */}
-                    {isAdmin ? (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setDetailsExpanded(!detailsExpanded)}
-                          className="flex w-full items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-amber-500/10"
-                          aria-expanded={detailsExpanded}
-                        >
-                          {detailsExpanded ? (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          )}
-                          <span className="flex items-center gap-1.5">
-                            <Settings className="h-3 w-3" />
-                            Admin: Operational details
-                          </span>
-                        </button>
-                        {detailsExpanded ? (
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {[
-                              { label: "Drivers required", value: String(selectedDensityResult.fullResult.drivers_required) },
-                              { label: "Vehicles by cube", value: String(selectedDensityResult.fullResult.vehicles_required_by_cube) },
-                              { label: "Drivers by time", value: String(selectedDensityResult.fullResult.drivers_by_time) },
-                              { label: "Anchor route cost", value: formatCurrency(selectedDensityResult.fullResult.anchor_route_cost) },
-                              { label: "Total route cost", value: formatCurrency(selectedDensityResult.fullResult.blended_cost) },
-                              { label: "Pickup overlap (min)", value: String(Math.round(selectedDensityResult.fullResult.pickup_overlap_minutes)) },
-                            ].map((item) => (
-                              <div key={item.label} className="rounded-lg border border-border bg-background/10 px-3 py-2">
-                                <div className="text-[10px] text-muted-foreground">{item.label}</div>
-                                <div className="mt-1 font-mono text-sm text-foreground">{item.value}</div>
-                              </div>
-                            ))}
+                        {adminWarnings?.densityTiers && (
+                          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+                            <div className="font-medium text-foreground">Warnings</div>
+                            <ul className="mt-1 space-y-1">
+                              <li>• {adminWarnings.densityTiers}</li>
+                            </ul>
                           </div>
-                        ) : null}
+                        )}
                       </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border bg-background/10 p-6 text-center text-sm text-muted-foreground">
-                    Select an anchor to see cost comparison.
+                    )}
                   </div>
                 )}
               </div>

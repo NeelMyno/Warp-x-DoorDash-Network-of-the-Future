@@ -11,7 +11,9 @@ import { resolveModuleLayout } from "@/components/modules/layouts/resolve-module
 import { requireUser } from "@/lib/auth/require-user";
 import { getModuleContent } from "@/lib/content/get-module-content";
 import { getSfsRateCards } from "@/lib/sfs-calculator/get-rate-cards";
-import type { SfsRateCard } from "@/lib/sfs-calculator/types";
+import { getSfsDensityTiers } from "@/lib/sfs-calculator/get-density-tiers";
+import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
+import { DEFAULT_SFS_RATE_CARDS } from "@/lib/sfs-calculator/types";
 import type { SfsConfigError } from "@/components/modules/sfs/sfs-calculator";
 
 const SECTION_KEYS: ModuleSectionKey[] = ["end-vision", "progress", "roadmap"];
@@ -86,6 +88,8 @@ export default async function ModulePage({
   // Fetch rate cards for calculator layouts (with structured result)
   let rateCards: SfsRateCard[] = [];
   let configError: SfsConfigError | null = null;
+  let densityTiers: SfsDensityTier[] | undefined;
+  let adminWarnings: { densityTiers?: string } | null = null;
 
   if (moduleEntry.layout === "calculator") {
     const result = await getSfsRateCards(supabase);
@@ -93,6 +97,18 @@ export default async function ModulePage({
       rateCards = result.rateCards;
     } else {
       configError = { reason: result.reason, message: result.message };
+      // V3 requirement: allow calculator to operate using default rates even if DB is missing.
+      rateCards = [
+        { id: "default-cargo-van", ...DEFAULT_SFS_RATE_CARDS["Cargo Van"] },
+        { id: "default-26-box-truck", ...DEFAULT_SFS_RATE_CARDS["26' Box Truck"] },
+      ];
+    }
+
+    const tiersResult = await getSfsDensityTiers(supabase, { isAdmin: role === "admin" });
+    densityTiers = tiersResult.tiers;
+
+    if (role === "admin" && tiersResult.adminWarning) {
+      adminWarnings = { densityTiers: tiersResult.adminWarning };
     }
   }
 
@@ -104,7 +120,9 @@ export default async function ModulePage({
     sections,
     activeTab: normalizeModuleTab(moduleEntry, tab),
     rateCards,
+    densityTiers,
     configError,
+    adminWarnings,
     isAdmin: role === "admin",
   });
 }

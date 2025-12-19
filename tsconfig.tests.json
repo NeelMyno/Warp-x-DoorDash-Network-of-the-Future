@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".tmp/tests",
+    "rootDir": ".",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "sourceMap": true
+  },
+  "include": ["tests/**/*.ts", "src/lib/sfs-calculator/**/*.ts"],
+  "exclude": ["node_modules", ".next", ".tmp/tests"]
+}
+
