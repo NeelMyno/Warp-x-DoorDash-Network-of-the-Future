@@ -7,18 +7,11 @@ export type StopType = "Anchor" | "Satellite";
 
 export const SFS_VEHICLE_TYPES: VehicleType[] = ["Cargo Van", "26' Box Truck"];
 
-export const SFS_MARKETS = [
-  "Chicago",
-  "Dallas",
-  "Los Angeles",
-  "New York City",
-  "Atlanta",
-  "Seattle",
-  "Miami",
-  "Denver",
-  "Phoenix",
-  "Boston",
-] as const;
+/**
+ * @deprecated Use SFS_TOP_MARKETS from './markets' instead.
+ * Kept for backward compatibility.
+ */
+export { SFS_TOP_MARKETS as SFS_MARKETS } from "./markets";
 
 /** Required upload headers for SFS calculator V3 (distance-band density discounts). */
 export const SFS_STORES_UPLOAD_REQUIRED_HEADERS = [
@@ -37,6 +30,7 @@ export const SFS_STORES_UPLOAD_OPTIONAL_HEADERS = [
   "distance_miles",
   "avg_cubic_inches_per_package",
   "service_time_minutes",
+  "zip_code",
 ] as const;
 
 
@@ -111,6 +105,8 @@ export interface SfsStoreUploadRow {
   pickup_window_start_time: string;
   pickup_window_end_time: string;
   service_time_minutes?: number | null;
+  /** Optional ZIP code for map visualization (5-digit normalized). */
+  zip_code?: string | null;
 }
 
 export interface SfsStop extends SfsStoreUploadRow {

@@ -21,6 +21,7 @@ import {
   tierForDistance,
   validateDensityTiers,
 } from "./density";
+import { canonicalizeMarket, isTopMarket, NON_TOP_MARKET_BASE_SURCHARGE } from "./markets";
 
 /**
  * Vehicle cubic capacities (cubic inches) per PDF.
@@ -72,7 +73,11 @@ export function computeSfsEconomics(
     densityTiers?: SfsDensityTier[];
   },
 ): SfsAnchorResult[] {
-  const base_fee = rateCard.base_fee;
+  // Canonicalize market for consistent surcharge logic (handles aliases like "NYC" -> "New York")
+  const canonicalMarket = canonicalizeMarket(inputs.market);
+  // Apply +$30 base surcharge for non-top markets
+  const marketSurcharge = isTopMarket(canonicalMarket) ? 0 : NON_TOP_MARKET_BASE_SURCHARGE;
+  const base_fee = rateCard.base_fee + marketSurcharge;
   const per_mile_rate = rateCard.per_mile_rate;
   const per_stop_rate = rateCard.per_stop_rate;
   const vehicle_cubic_capacity = getVehicleCubicCapacity(inputs.vehicle_type);

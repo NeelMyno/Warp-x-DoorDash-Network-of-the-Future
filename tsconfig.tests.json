@@ -9,9 +9,13 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "types": ["node"],
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["tests/**/*.ts", "src/lib/sfs-calculator/**/*.ts"],
+  "include": ["tests/**/*.ts", "src/lib/sfs-calculator/**/*.ts", "src/lib/geo/**/*.ts"],
   "exclude": ["node_modules", ".next", ".tmp/tests"]
 }
 

@@ -63,11 +63,19 @@ export function SfsCalculatorHelpDialog({ onStartTour }: SfsCalculatorHelpDialog
             <li>Click an anchor to see savings breakdown</li>
           </ol>
 
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Tip:</span> Every satellite needs{" "}
-              <span className="font-medium text-primary">distance_miles</span> or it will not calculate.
-            </p>
+          <div className="space-y-2">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Tip:</span> Every satellite needs{" "}
+                <span className="font-medium text-primary">distance_miles</span> or it will not calculate.
+              </p>
+            </div>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Optional:</span> Add{" "}
+                <span className="font-medium text-primary">zip_code</span> to see routes on a map.
+              </p>
+            </div>
           </div>
 
           {/* Start guided tips */}

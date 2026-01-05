@@ -8,10 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import type { SfsCalculatorInputs, VehicleType, SfsRateCard } from "@/lib/sfs-calculator/types";
-import { SFS_MARKETS } from "@/lib/sfs-calculator/types";
 import { formatCurrency } from "@/lib/sfs-calculator/format";
-
-const OTHER_MARKET_VALUE = "__other__";
+import { MarketCombobox } from "./MarketCombobox";
 
 interface CompactRouteAssumptionsProps {
   inputs: SfsCalculatorInputs;
@@ -31,45 +29,18 @@ export function CompactRouteAssumptions({
   const [assumptionsExpanded, setAssumptionsExpanded] = React.useState(false);
   const [ratesExpanded, setRatesExpanded] = React.useState(false);
 
-  const marketSelectValue = SFS_MARKETS.includes(inputs.market as (typeof SFS_MARKETS)[number])
-    ? inputs.market
-    : OTHER_MARKET_VALUE;
-
   return (
     <div data-tour="assumptions" className="space-y-3">
       {/* Primary controls row */}
       <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-[160px] space-y-1">
+        <div className="min-w-[200px] max-w-[280px] space-y-1">
           <Label className="text-[11px] text-muted-foreground">Market</Label>
-          <Select
-            value={marketSelectValue}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === OTHER_MARKET_VALUE) {
-                onInputsChange({ ...inputs, market: "" });
-              } else {
-                onInputsChange({ ...inputs, market: v });
-              }
-            }}
-            options={[
-              ...SFS_MARKETS.map((m) => ({ value: m, label: m })),
-              { value: OTHER_MARKET_VALUE, label: "Other…" },
-            ]}
-            placeholder="Select market"
+          <MarketCombobox
+            value={inputs.market}
+            onChange={(market) => onInputsChange({ ...inputs, market })}
             invalid={!!validationErrors.market}
           />
         </div>
-
-        {marketSelectValue === OTHER_MARKET_VALUE && (
-          <div className="min-w-[140px]">
-            <Input
-              value={inputs.market}
-              onChange={(e) => onInputsChange({ ...inputs, market: e.target.value })}
-              placeholder="Enter market"
-              className="h-9"
-            />
-          </div>
-        )}
 
         <div className="min-w-[160px] space-y-1">
           <Label className="text-[11px] text-muted-foreground">Vehicle type</Label>

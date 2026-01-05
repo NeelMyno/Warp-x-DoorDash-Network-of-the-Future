@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileUp, Check, AlertCircle } from "lucide-react";
+import { FileUp, Check, AlertCircle, MapPin } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 
@@ -17,6 +17,7 @@ interface CompactInputsBarProps {
   uploadSummary: UploadSummary | null;
   hasErrors: boolean;
   hasMissingDistances: boolean;
+  hasAnyZipCodes?: boolean;
   onFileSelected: (file: File | null) => void;
 }
 
@@ -25,6 +26,7 @@ export function CompactInputsBar({
   uploadSummary,
   hasErrors,
   hasMissingDistances,
+  hasAnyZipCodes,
   onFileSelected,
 }: CompactInputsBarProps) {
   const hasIssues = hasErrors || hasMissingDistances;
@@ -101,6 +103,33 @@ export function CompactInputsBar({
               </span>
             </div>
           ))}
+
+          {/* ZIP status chip */}
+          {hasAnyZipCodes !== undefined && (
+            <div
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
+                hasAnyZipCodes
+                  ? "border-primary/30 bg-primary/5"
+                  : "border-muted bg-muted/30",
+              ].join(" ")}
+            >
+              <MapPin
+                className={[
+                  "h-3 w-3",
+                  hasAnyZipCodes ? "text-primary" : "text-muted-foreground",
+                ].join(" ")}
+              />
+              <span
+                className={[
+                  "text-[11px]",
+                  hasAnyZipCodes ? "text-primary" : "text-muted-foreground",
+                ].join(" ")}
+              >
+                {hasAnyZipCodes ? "ZIPs detected" : "No ZIPs"}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

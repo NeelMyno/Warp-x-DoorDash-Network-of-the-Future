@@ -6,6 +6,7 @@ import {
   type SfsStoreUploadRow,
   type StopType,
 } from "./types";
+import { normalizeZip } from "../geo/zip";
 
 /** Missing distance_miles error for a satellite row. */
 export type MissingDistanceError = {
@@ -13,6 +14,15 @@ export type MissingDistanceError = {
   anchor_id: string;
   store_name?: string;
   store_id?: string;
+};
+
+/** ZIP code warning for a row with invalid/missing ZIP. */
+export type ZipCodeWarning = {
+  row: number;
+  route_id: string;
+  store_name?: string;
+  raw_zip?: string;
+  reason: "missing" | "invalid";
 };
 
 export type StoresUploadParseOk = {
@@ -23,6 +33,10 @@ export type StoresUploadParseOk = {
   errors: SfsStoreUploadError[];
   /** Satellite rows missing distance_miles (blocking error if non-empty). */
   missingDistanceErrors: MissingDistanceError[];
+  /** ZIP code warnings (non-blocking, for map feature). */
+  zipCodeWarnings: ZipCodeWarning[];
+  /** Whether any rows have valid ZIP codes (for map availability). */
+  hasAnyZipCodes: boolean;
 };
 
 export type StoresUploadParseError = {
@@ -178,10 +192,13 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
 
   const hasDistanceMilesColumn = headerIndex.has("distance_miles");
   const hasStoreIdColumn = headerIndex.has("store_id");
+  const hasZipCodeColumn = headerIndex.has("zip_code");
 
   const rows: SfsStoreUploadRow[] = [];
   const stops: SfsStop[] = [];
   const missingDistanceErrors: MissingDistanceError[] = [];
+  const zipCodeWarnings: ZipCodeWarning[] = [];
+  let validZipCount = 0;
 
   for (let r = 1; r < matrix.length; r++) {
     const rawRow = matrix[r];
@@ -216,7 +233,40 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
       ? parseOptionalNumber(get("service_time_minutes"))
       : null;
 
+    // Parse and normalize ZIP code (optional, for map feature)
+    const rawZip = hasZipCodeColumn ? get("zip_code").trim() : "";
+    const zip_code = normalizeZip(rawZip);
+
     const rowNumber = r + 1; // include header row (1-based)
+
+    // Track ZIP code warnings (non-blocking)
+    if (hasZipCodeColumn) {
+      if (!rawZip) {
+        // Only warn if there's a zip_code column but value is empty
+        // Limit to first 10 warnings to avoid noise
+        if (zipCodeWarnings.length < 10) {
+          zipCodeWarnings.push({
+            row: rowNumber,
+            route_id,
+            store_name: store_name || undefined,
+            reason: "missing",
+          });
+        }
+      } else if (!zip_code) {
+        // Raw value exists but couldn't be normalized
+        if (zipCodeWarnings.length < 10) {
+          zipCodeWarnings.push({
+            row: rowNumber,
+            route_id,
+            store_name: store_name || undefined,
+            raw_zip: rawZip,
+            reason: "invalid",
+          });
+        }
+      } else {
+        validZipCount++;
+      }
+    }
 
     if (!route_id) {
       errors.push({ row: rowNumber, field: "route_id", message: "route_id is required." });
@@ -274,6 +324,7 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
       pickup_window_start_time: startStr.trim(),
       pickup_window_end_time: endStr.trim(),
       service_time_minutes: service,
+      zip_code: zip_code ?? undefined,
     };
 
     rows.push(row);
@@ -341,25 +392,27 @@ export function parseStoresUploadText(text: string): StoresUploadParseResult {
     stops,
     errors,
     missingDistanceErrors,
+    zipCodeWarnings,
+    hasAnyZipCodes: validZipCount > 0,
   };
 }
 
 export function getStoresTemplateCsv(): string {
   const header = [...SFS_STORES_UPLOAD_REQUIRED_HEADERS, ...SFS_STORES_UPLOAD_OPTIONAL_HEADERS].join(",");
   // Header order: route_id, anchor_id, stop_type, store_name, packages, pickup_window_start_time, pickup_window_end_time,
-  //               store_id, distance_miles, avg_cubic_inches_per_package, service_time_minutes
+  //               store_id, distance_miles, avg_cubic_inches_per_package, service_time_minutes, zip_code
   const examples = [
-    // route_id, anchor_id, stop_type, store_name, packages, start, end, store_id, distance_miles, avg_cube, service
-    ["R-001", "A-CHI-01", "Anchor", "Chicago Anchor", "180", "08:00", "12:00", "CHI_ANCHOR_001", "", "1000", "5"],
-    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=10mi)", "60", "09:00", "12:00", "CHI_SAT_008", "8", "", ""],
-    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=20mi)", "40", "09:15", "12:00", "CHI_SAT_016", "16", "", ""],
-    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=30mi)", "25", "09:30", "12:00", "CHI_SAT_026", "26", "", ""],
-    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (>30mi)", "15", "10:00", "12:00", "CHI_SAT_045", "45", "", ""],
-    ["R-002", "A-DAL-01", "Anchor", "Dallas Anchor", "140", "07:30", "11:00", "DAL_ANCHOR_001", "", "1100", "4"],
-    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=10mi)", "55", "08:15", "11:00", "DAL_SAT_009", "9", "", ""],
-    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=20mi)", "35", "08:30", "11:00", "DAL_SAT_018", "18", "", ""],
-    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=30mi)", "25", "09:00", "11:00", "DAL_SAT_028", "28", "", ""],
-    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (>30mi)", "15", "09:30", "11:00", "DAL_SAT_050", "50", "", ""],
+    // route_id, anchor_id, stop_type, store_name, packages, start, end, store_id, distance_miles, avg_cube, service, zip_code
+    ["R-001", "A-CHI-01", "Anchor", "Chicago Anchor", "180", "08:00", "12:00", "CHI_ANCHOR_001", "", "1000", "5", "60601"],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=10mi)", "60", "09:00", "12:00", "CHI_SAT_008", "8", "", "", "60611"],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=20mi)", "40", "09:15", "12:00", "CHI_SAT_016", "16", "", "", "60614"],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (<=30mi)", "25", "09:30", "12:00", "CHI_SAT_026", "26", "", "", "60622"],
+    ["R-001", "A-CHI-01", "Satellite", "Chicago Satellite (>30mi)", "15", "10:00", "12:00", "CHI_SAT_045", "45", "", "", "60640"],
+    ["R-002", "A-DAL-01", "Anchor", "Dallas Anchor", "140", "07:30", "11:00", "DAL_ANCHOR_001", "", "1100", "4", "75201"],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=10mi)", "55", "08:15", "11:00", "DAL_SAT_009", "9", "", "", "75202"],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=20mi)", "35", "08:30", "11:00", "DAL_SAT_018", "18", "", "", "75204"],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (<=30mi)", "25", "09:00", "11:00", "DAL_SAT_028", "28", "", "", "75206"],
+    ["R-002", "A-DAL-01", "Satellite", "Dallas Satellite (>30mi)", "15", "09:30", "11:00", "DAL_SAT_050", "50", "", "", "75214"],
   ];
 
   const body = examples.map((row) => row.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(",")).join("\n");

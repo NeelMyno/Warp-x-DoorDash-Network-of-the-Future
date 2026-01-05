@@ -144,6 +144,20 @@ Before shipping SFS calculator changes:
 - [ ] Smoke test: Audit log shows `sfs_rate_card_created/updated/deleted` entries
 - [ ] Smoke test: Missing rate cards table falls back to default rates (no crash)
 
+## SFS Calculator Map QA Checklist
+
+The map feature is optional and should never block calculator usage:
+
+- [ ] CSV without `zip_code` column → Map tab shows "Map unavailable" message
+- [ ] CSV with blank zips for all rows → Map tab shows "ZIP codes weren't provided" + ZIP chip warning
+- [ ] CSV with partial zips → Map renders + shows "X/Y stops on map" coverage bar
+- [ ] Network offline / API failure → "Couldn't load map" with Retry button + "calculator unaffected" note
+- [ ] Switch anchors quickly → No stale map data appears (abort works correctly)
+- [ ] Upload new CSV → Map resets and reloads correctly
+- [ ] Build + tests pass → `npm run lint && npm run build && npm test`
+- [ ] Attribution visible → "© OpenStreetMap · Tiles by CARTO" in bottom-right
+- [ ] Disclaimer visible → "Lines show relationships (not driving routes)" at top
+
 ## Running tests
 
 ```bash

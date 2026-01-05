@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronRight, Copy, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, MapIcon, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import type { SfsSatelliteImpactSummary } from "@/lib/sfs-calculator/impact";
@@ -12,6 +12,10 @@ import { Button } from "@/components/ui/button";
 
 import { DensityDiscountInfoPopover } from "@/components/modules/sfs-calculator/DensityDiscountInfoPopover";
 import { CostBreakdownCard } from "@/components/modules/sfs-calculator/CostBreakdownCard";
+import { AnchorRoutesMap } from "@/components/modules/sfs-calculator/AnchorRoutesMap";
+import { getStoresTemplateCsv } from "@/lib/sfs-calculator/parse-stores";
+
+type PanelTab = "summary" | "map";
 
 export function AnchorSummaryPanel(props: {
   inputs: SfsCalculatorInputs;
@@ -20,8 +24,28 @@ export function AnchorSummaryPanel(props: {
 }) {
   const { inputs, result, summary } = props;
   const [storeDetailsOpen, setStoreDetailsOpen] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<PanelTab>("summary");
 
   const hasSavings = summary.savings_dollars > 0;
+
+  // Get anchor ZIP from the anchor stop
+  const anchorStop = result.stops_with_distance.find((s) => s.stop_type === "Anchor");
+  const anchorZip = anchorStop?.zip_code;
+
+  // Get satellite stops for map
+  const satelliteStops = result.stops_with_distance.filter((s) => s.stop_type === "Satellite");
+
+  // Download template handler
+  const handleDownloadTemplate = React.useCallback(() => {
+    const csv = getStoresTemplateCsv();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sfs-stores-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const handleCopy = () => {
     const text = generateSalesSummaryText({ inputs, selected: result, summary });
@@ -31,22 +55,62 @@ export function AnchorSummaryPanel(props: {
 
   return (
     <div data-tour="summary" className="space-y-4">
-      {/* Outcome Card */}
-      <div className="rounded-xl border border-border bg-background/10 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Anchor Store
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-1 rounded-lg border border-border bg-background/10 p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("summary")}
+          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            activeTab === "summary"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Summary
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("map")}
+          className={`flex items-center justify-center gap-1.5 flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            activeTab === "map"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <MapIcon className="h-3.5 w-3.5" />
+          Map
+        </button>
+      </div>
+
+      {/* Map View */}
+      {activeTab === "map" && (
+        <AnchorRoutesMap
+          anchorId={result.anchor_id}
+          anchorZip={anchorZip}
+          satellites={satelliteStops}
+          onDownloadTemplate={handleDownloadTemplate}
+        />
+      )}
+
+      {/* Summary View */}
+      {activeTab === "summary" && (
+        <>
+          {/* Outcome Card */}
+          <div className="rounded-xl border border-border bg-background/10 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Anchor Store
+                </div>
+                <div className="mt-0.5 text-lg font-semibold text-foreground">
+                  {result.anchor_id}
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5">
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </Button>
             </div>
-            <div className="mt-0.5 text-lg font-semibold text-foreground">
-              {result.anchor_id}
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5">
-            <Copy className="h-3.5 w-3.5" />
-            Copy
-          </Button>
-        </div>
 
         {/* Big CPP display */}
         <div className="mt-5 flex items-end gap-6">
@@ -147,6 +211,8 @@ export function AnchorSummaryPanel(props: {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

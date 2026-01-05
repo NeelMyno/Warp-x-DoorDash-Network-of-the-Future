@@ -104,6 +104,7 @@ export function SfsCalculatorV2({
   const [uploadedStops, setUploadedStops] = React.useState<SfsStop[] | null>(null);
   const [uploadErrors, setUploadErrors] = React.useState<SfsStoreUploadError[]>([]);
   const [missingDistanceErrors, setMissingDistanceErrors] = React.useState<MissingDistanceError[]>([]);
+  const [hasAnyZipCodes, setHasAnyZipCodes] = React.useState<boolean | undefined>(undefined);
   const [selectedAnchorId, setSelectedAnchorId] = React.useState<string | null>(null);
   const [densityTiers, setDensityTiers] = React.useState<SfsDensityTier[]>(() => initialDensityTiers);
   const [impactSummary, setImpactSummary] = React.useState<SfsSatelliteImpactSummary | null>(null);
@@ -233,6 +234,7 @@ export function SfsCalculatorV2({
     setUploadedStops(null);
     setUploadErrors([]);
     setMissingDistanceErrors([]);
+    setHasAnyZipCodes(undefined);
     setSelectedAnchorId(null);
     toast.success("Reset complete");
   };
@@ -253,6 +255,7 @@ export function SfsCalculatorV2({
       setUploadedStops(null);
       setUploadErrors(parsed.errors);
       setMissingDistanceErrors([]);
+      setHasAnyZipCodes(undefined);
       toast.error("Upload failed");
       return;
     }
@@ -260,6 +263,7 @@ export function SfsCalculatorV2({
     setUploadedStops(parsed.stops);
     setUploadErrors(parsed.errors);
     setMissingDistanceErrors(parsed.missingDistanceErrors);
+    setHasAnyZipCodes(parsed.hasAnyZipCodes);
     if (parsed.missingDistanceErrors.length) {
       toast.error(`${parsed.missingDistanceErrors.length} satellite row(s) missing distance_miles`);
     } else if (parsed.errors.length) {
@@ -298,6 +302,7 @@ export function SfsCalculatorV2({
           uploadSummary={uploadSummary}
           hasErrors={uploadErrors.length > 0}
           hasMissingDistances={hasMissingDistances}
+          hasAnyZipCodes={hasAnyZipCodes}
           onFileSelected={handleFileSelected}
         />
 
