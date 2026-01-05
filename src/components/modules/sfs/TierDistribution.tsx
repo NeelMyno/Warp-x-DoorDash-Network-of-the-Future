@@ -37,9 +37,9 @@ export function TierDistribution(props: { rows: SfsTierDistributionRow[] }) {
               {rows.map((r) => (
                 <tr key={r.label} className="text-foreground/90">
                   <td className="px-3 py-2">{r.label}</td>
-                  <td className="px-3 py-2 text-right font-mono">{formatNumber(r.satelliteStoreCount)}</td>
-                  <td className="px-3 py-2 text-right font-mono">{formatNumber(r.satellitePackages)}</td>
-                  <td className="px-3 py-2 text-right font-mono">{formatPercent(r.satelliteShare)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(r.satelliteStoreCount)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(r.satellitePackages)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatPercent(r.satelliteShare)}</td>
                 </tr>
               ))}
             </tbody>

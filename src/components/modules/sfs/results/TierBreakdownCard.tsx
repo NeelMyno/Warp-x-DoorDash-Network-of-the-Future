@@ -58,7 +58,7 @@ export function TierBreakdownCard(props: {
             <div className="text-sm font-medium text-foreground">Why this discount?</div>
             {!isExpanded && (
               <div className="mt-0.5 text-xs text-muted-foreground">
-                Weighted discount: <span className="font-mono font-medium text-foreground">{formatPercent(weightedDiscountPct)}</span>
+                Weighted discount: <span className="tabular-nums font-medium text-foreground">{formatPercent(weightedDiscountPct)}</span>
               </div>
             )}
           </div>
@@ -97,7 +97,7 @@ export function TierBreakdownCard(props: {
               </div>
 
               {/* Legend */}
-              <div className="mt-3 flex flex-wrap gap-3 text-[10px]">
+              <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
                 {segments.map((seg) => (
                   <div key={seg.label} className="flex items-center gap-1.5">
                     <div
@@ -114,7 +114,7 @@ export function TierBreakdownCard(props: {
               {/* Weighted discount */}
               <div className="mt-4 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
                 <span className="text-xs text-muted-foreground">Weighted density discount</span>
-                <span className="font-mono text-sm font-semibold text-foreground">
+                <span className="tabular-nums text-sm font-semibold text-foreground">
                   {formatPercent(weightedDiscountPct)}
                 </span>
               </div>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { AppBackground } from "@/components/shell/AppBackground";
@@ -9,15 +8,12 @@ const siteUrl =
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
   "http://localhost:3000";
 
-const fontUi = Geist({
-  subsets: ["latin"],
-  variable: "--font-ui",
-});
-
-const fontCode = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-code",
-});
+/**
+ * Typography: Satoshi (from Fontshare CDN)
+ * - Single font for both UI and numbers (no monospace)
+ * - Use `tabular-nums` utility for aligned numeric columns
+ * - CSS import in globals.css handles font loading
+ */
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -62,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body
-        className={`${fontUi.variable} ${fontCode.variable} min-h-full antialiased`}
+        className="min-h-full antialiased"
         suppressHydrationWarning
       >
         <AppBackground />

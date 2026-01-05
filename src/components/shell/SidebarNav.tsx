@@ -140,7 +140,7 @@ export function SidebarNav({
 
         <div className="pt-4">
           <div className="px-2 pb-2 text-xs font-medium text-muted-foreground">
-            Modules
+            Solution Buildouts
           </div>
           <div className="space-y-1">
             {modules.map((m) => {

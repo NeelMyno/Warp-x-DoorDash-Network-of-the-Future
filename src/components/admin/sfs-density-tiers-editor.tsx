@@ -280,7 +280,7 @@ export function SfsDensityTiersEditor() {
                         disabled={saving}
                       />
                       {warnHigh ? (
-                        <div className="mt-1 text-[10px] text-amber-500">
+                        <div className="mt-1 text-[11px] text-amber-500">
                           Note: cap stays ≤20%.
                         </div>
                       ) : null}

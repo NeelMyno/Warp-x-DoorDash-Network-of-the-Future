@@ -30,7 +30,7 @@ export function DiscountTierLegend(props: {
           </div>
         </div>
         {isAdmin && usingFallback ? (
-          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+          <Badge variant="outline" className="text-[11px] text-muted-foreground">
             Using default tiers
           </Badge>
         ) : null}
@@ -54,7 +54,7 @@ export function DiscountTierLegend(props: {
               ].join(" ")}
             >
               <div className="text-[11px] font-medium text-foreground">{label}</div>
-              <div className="text-[11px] font-mono text-muted-foreground">
+              <div className="tabular-nums text-[11px] text-muted-foreground">
                 {formatPercent(t.discountPct)}
               </div>
             </div>

@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
+/**
+ * Satoshi font (from Fontshare CDN)
+ * - Single font family for entire app (no monospace)
+ * - Use `tabular-nums` class for numeric alignment
+ */
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap");
+
 :root {
   /* shadcn semantic vars (dark-only V1) */
   --background: var(--warp-bg);
@@ -58,10 +65,11 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-ui), ui-sans-serif, system-ui, -apple-system, Segoe UI,
+  /* Satoshi as single font for entire app - no monospace */
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, -apple-system, Segoe UI,
     Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-mono: var(--font-code), ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: "Satoshi", ui-sans-serif, system-ui, -apple-system, Segoe UI,
+    Roboto, Helvetica, Arial;
   --radius: var(--radius);
 }
 

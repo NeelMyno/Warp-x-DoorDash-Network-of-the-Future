@@ -93,23 +93,23 @@ export function SatelliteImpactTable(props: {
                   <tr className="text-foreground/90">
                     <td className="px-3 py-2">
                       <div className="font-medium text-foreground">{r.store_name}</div>
-                      <div className="font-mono text-[11px] text-muted-foreground">{r.store_id}</div>
+                      <div className="text-[11px] text-muted-foreground">{r.store_id}</div>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono">{r.distance_to_anchor_miles.toFixed(1)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.distance_to_anchor_miles.toFixed(1)}</td>
                     <td className="px-3 py-2">{r.tier_label}</td>
-                    <td className="px-3 py-2 text-right font-mono">{formatNumber(r.packages)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatNumber(r.packages)}</td>
                     <td className="px-3 py-2">
                       {r.classification === "Density benefit" ? (
-                        <Badge variant="accent" className="text-[10px]">
+                        <Badge variant="accent" className="text-[11px]">
                           Density benefit
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        <Badge variant="outline" className="text-[11px] text-muted-foreground">
                           Regular cost
                         </Badge>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono">{formatCurrency(r.incremental_savings)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(r.incremental_savings)}</td>
                     <td className="px-3 py-2 text-right">
                       <button
                         type="button"

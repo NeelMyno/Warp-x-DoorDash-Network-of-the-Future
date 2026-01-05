@@ -10,8 +10,8 @@ import { formatCurrency, formatPercent, generateSalesSummaryText } from "@/lib/s
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-import { TierBreakdownCard } from "./TierBreakdownCard";
-import { CostComponentsCard } from "./CostComponentsCard";
+import { DensityDiscountInfoPopover } from "@/components/modules/sfs-calculator/DensityDiscountInfoPopover";
+import { CostBreakdownCard } from "@/components/modules/sfs-calculator/CostBreakdownCard";
 
 export function AnchorSummaryPanel(props: {
   inputs: SfsCalculatorInputs;
@@ -30,15 +30,15 @@ export function AnchorSummaryPanel(props: {
   };
 
   return (
-    <div className="space-y-4">
+    <div data-tour="summary" className="space-y-4">
       {/* Outcome Card */}
       <div className="rounded-xl border border-border bg-background/10 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Anchor
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Anchor Store
             </div>
-            <div className="mt-0.5 font-mono text-lg font-semibold text-foreground">
+            <div className="mt-0.5 text-lg font-semibold text-foreground">
               {result.anchor_id}
             </div>
           </div>
@@ -51,14 +51,17 @@ export function AnchorSummaryPanel(props: {
         {/* Big CPP display */}
         <div className="mt-5 flex items-end gap-6">
           <div>
-            <div className="text-xs text-muted-foreground">With density CPP</div>
-            <div className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              With density CPP
+              <DensityDiscountInfoPopover weightedDiscountPct={summary.weighted_discount_pct} />
+            </div>
+            <div className="mt-1 tabular-nums text-3xl font-bold tracking-tight text-foreground">
               {formatCurrency(summary.discounted_blended_cpp)}
             </div>
           </div>
           <div className="pb-1">
             <div className="text-xs text-muted-foreground">Regular CPP</div>
-            <div className="mt-1 font-mono text-lg text-foreground/60 line-through">
+            <div className="mt-1 tabular-nums text-lg text-foreground/60 line-through">
               {formatCurrency(summary.regular_blended_cpp)}
             </div>
           </div>
@@ -84,20 +87,15 @@ export function AnchorSummaryPanel(props: {
         </div>
       </div>
 
-      {/* Tier Breakdown */}
-      <TierBreakdownCard
-        tiers={summary.tier_distribution}
-        weightedDiscountPct={summary.weighted_discount_pct}
-      />
-
-      {/* Cost Components */}
-      <CostComponentsCard
+      {/* Cost Breakdown Card */}
+      <CostBreakdownCard
         baseCostRegular={result.base_portion_before_density}
         baseCostWithDensity={result.base_portion_after_density}
         stopFees={result.stop_fees_total}
         totalCostRegular={summary.regular_blended_cost}
         totalCostWithDensity={summary.discounted_blended_cost}
         savingsDollars={summary.savings_dollars}
+        weightedDiscountPct={summary.weighted_discount_pct}
       />
 
       {/* Per-store details disclosure */}
@@ -132,14 +130,14 @@ export function AnchorSummaryPanel(props: {
                 {summary.impacts.map((impact, idx) => (
                   <tr key={`${impact.store_id}-${idx}`} className="text-foreground/90">
                     <td className="px-3 py-2 font-medium">{impact.store_name || "—"}</td>
-                    <td className="px-3 py-2 text-right font-mono">{impact.packages}</td>
-                    <td className="px-3 py-2 text-right font-mono">
+                    <td className="px-3 py-2 text-right tabular-nums">{impact.packages}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
                       {impact.distance_to_anchor_miles > 0
                         ? `${impact.distance_to_anchor_miles.toFixed(1)} mi`
                         : "—"}
                     </td>
                     <td className="px-3 py-2">{impact.tier_label}</td>
-                    <td className="px-3 py-2 text-right font-mono">
+                    <td className="px-3 py-2 text-right tabular-nums">
                       {impact.tier_discount_pct > 0 ? formatPercent(impact.tier_discount_pct) : "0%"}
                     </td>
                   </tr>
