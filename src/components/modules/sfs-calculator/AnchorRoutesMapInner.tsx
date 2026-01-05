@@ -73,7 +73,7 @@ export function AnchorRoutesMapInner(props: AnchorRoutesMapInnerProps) {
           bounds: initialBounds,
           fitBoundsOptions: { padding: 40 },
         }}
-        style={{ width: "100%", height: 320 }}
+        style={{ width: "100%", height: 448 }}
         mapStyle={MAP_STYLE}
         attributionControl={false}
       >
