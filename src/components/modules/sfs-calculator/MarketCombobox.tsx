@@ -9,7 +9,6 @@ import {
   isTopMarket,
   normalizeMarket,
   isKnownMarket,
-  NON_TOP_MARKET_BASE_SURCHARGE,
 } from "@/lib/sfs-calculator/markets";
 
 interface MarketComboboxProps {
@@ -292,12 +291,6 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
         </div>
       )}
 
-      {/* Helper text for non-top markets */}
-      {value && !isTop && (
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Non-top markets include a <span className="font-medium">+${NON_TOP_MARKET_BASE_SURCHARGE} base</span> adjustment.
-        </p>
-      )}
     </div>
   );
 }
@@ -346,14 +339,7 @@ function MarketListItem({
           market
         )}
       </span>
-      <span className="flex items-center gap-1.5">
-        {!isTop && (
-          <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-            +${NON_TOP_MARKET_BASE_SURCHARGE} base
-          </span>
-        )}
-        {isSelected && <Check className="h-4 w-4 text-primary" />}
-      </span>
+      {isSelected && <Check className="h-4 w-4 text-primary" />}
     </button>
   );
 }
