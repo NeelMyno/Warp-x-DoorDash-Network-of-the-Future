@@ -5,90 +5,170 @@ import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { isHiddenUntilExpired, setHiddenForDays } from "@/lib/cookies";
+import {
+  isHiddenUntilExpired,
+  setHiddenForDays,
+  getResumeStep,
+  setResumeStep,
+  clearResumeStep,
+} from "@/lib/cookies";
 
-const COOKIE_NAME = "sfs_calc_tour_hidden_until";
+/* -------------------------------------------------------------------------- */
+/*                              Constants                                     */
+/* -------------------------------------------------------------------------- */
+
+const COOKIE_HIDDEN = "sfs_calc_tour_hidden_until";
+const COOKIE_RESUME = "sfs_calc_tour_resume_step";
 const HIDE_DAYS = 7;
-const AUTO_START_DELAY_MS = 900;
+const AUTO_START_DELAY_MS = 800;
+const RESUME_DELAY_MS = 750;
+
+// Set to true to allow Esc to dismiss (off by default per stakeholder request)
+const ALLOW_ESC_DISMISS = false;
+
+/* -------------------------------------------------------------------------- */
+/*                              Tour Steps                                    */
+/* -------------------------------------------------------------------------- */
 
 interface TourStep {
   target: string;
   title: string;
   content: string;
-  /** If true, step requires data to be loaded (CSV uploaded) */
-  requiresData?: boolean;
 }
 
 const TOUR_STEPS: TourStep[] = [
   {
     target: "upload",
-    title: "Upload your stores",
-    content: "Download the template, add anchors and satellites with distances, then upload.",
+    title: "Upload your stores CSV",
+    content:
+      "Upload a CSV of anchors + satellites. Each satellite row must include distance_miles. Use Template if you need a sample.",
   },
   {
     target: "assumptions",
-    title: "Set assumptions",
-    content: "Pick market and vehicle type to calculate base costs.",
+    title: "Choose market & vehicle",
+    content:
+      "Pick market and vehicle type to apply the baseline rates. You can open Advanced assumptions later if needed.",
   },
   {
     target: "anchors",
-    title: "Select an anchor",
-    content: "Click any anchor store to see its savings breakdown.",
-    requiresData: true,
+    title: "Browse anchors",
+    content:
+      "This list shows cost per package with density savings. Click any anchor to view its breakdown.",
   },
   {
     target: "summary",
-    title: "Savings summary",
-    content: "See total cost before vs after density savings.",
-    requiresData: true,
+    title: "Review savings",
+    content:
+      "Compare Regular vs With density totals and see your savings. \"Details\" is optional.",
   },
   {
     target: "export",
-    title: "Export results",
-    content: "Copy summary or download CSV with all details.",
-    requiresData: true,
+    title: "Share results",
+    content: "Use Copy for a quick summary or download CSV for all anchors.",
   },
 ];
+
+/* -------------------------------------------------------------------------- */
+/*                           Main Component                                   */
+/* -------------------------------------------------------------------------- */
 
 interface SfsCalculatorTourProps {
   /** Force tour to start (bypasses cookie check) */
   forceStart?: boolean;
+  /** Whether CSV data has been uploaded */
+  hasCsv?: boolean;
   /** Callback when tour ends */
   onEnd?: () => void;
 }
 
-export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps) {
+export function SfsCalculatorTour({
+  forceStart,
+  hasCsv = false,
+  onEnd,
+}: SfsCalculatorTourProps) {
   const [isActive, setIsActive] = React.useState(false);
   const [stepIndex, setStepIndex] = React.useState(0);
   const [targetRect, setTargetRect] = React.useState<DOMRect | null>(null);
-  const [targetMissing, setTargetMissing] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
   const prevForceStart = React.useRef(forceStart);
+  const prevHasCsv = React.useRef(hasCsv);
 
-  // Mount and auto-start check
+  // ────────────────────────────────────────────────────────────────────────────
+  // Auto-start logic on mount
+  // ────────────────────────────────────────────────────────────────────────────
   React.useEffect(() => {
     setMounted(true);
-    // Auto-start only if cookie is missing or expired
-    if (isHiddenUntilExpired(COOKIE_NAME)) {
-      const timer = setTimeout(() => {
-        setStepIndex(0);
-        setIsActive(true);
-      }, AUTO_START_DELAY_MS);
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
-  // Handle forceStart prop changes (manual trigger from Help dialog)
-  React.useEffect(() => {
-    if (forceStart && !prevForceStart.current) {
+    // If in cooldown, don't auto-start
+    if (!isHiddenUntilExpired(COOKIE_HIDDEN)) return;
+
+    // Check for resume step
+    const resumeStep = getResumeStep(COOKIE_RESUME);
+    if (resumeStep !== null) {
+      // If CSV already uploaded, start at resume step
+      if (hasCsv) {
+        const timer = setTimeout(() => {
+          setStepIndex(resumeStep);
+          setIsActive(true);
+          clearResumeStep(COOKIE_RESUME);
+        }, RESUME_DELAY_MS);
+        return () => clearTimeout(timer);
+      }
+      // If no CSV, wait for upload (handled by hasCsv effect)
+      return;
+    }
+
+    // First-time experience: start at step 0
+    const timer = setTimeout(() => {
       setStepIndex(0);
       setIsActive(true);
+    }, AUTO_START_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Resume tour when CSV becomes available
+  // ────────────────────────────────────────────────────────────────────────────
+  React.useEffect(() => {
+    // Detect transition: hasCsv false → true
+    if (hasCsv && !prevHasCsv.current) {
+      prevHasCsv.current = hasCsv;
+
+      // Check if we should resume
+      if (!isHiddenUntilExpired(COOKIE_HIDDEN)) return;
+
+      const resumeStep = getResumeStep(COOKIE_RESUME);
+      if (resumeStep !== null && !isActive) {
+        const timer = setTimeout(() => {
+          setStepIndex(resumeStep);
+          setIsActive(true);
+          clearResumeStep(COOKIE_RESUME);
+        }, RESUME_DELAY_MS);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevHasCsv.current = hasCsv;
+  }, [hasCsv, isActive]);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Handle forceStart prop (from Help dialog)
+  // ────────────────────────────────────────────────────────────────────────────
+  React.useEffect(() => {
+    if (forceStart && !prevForceStart.current) {
+      // Start at step 2 (index 2) if CSV uploaded, else step 0
+      const startStep = hasCsv ? 2 : 0;
+      setStepIndex(startStep);
+      setIsActive(true);
+      clearResumeStep(COOKIE_RESUME);
     }
     prevForceStart.current = forceStart;
-  }, [forceStart]);
+  }, [forceStart, hasCsv]);
 
-  // Animate in when active
+  // ────────────────────────────────────────────────────────────────────────────
+  // Visibility animation
+  // ────────────────────────────────────────────────────────────────────────────
   React.useEffect(() => {
     if (isActive) {
       requestAnimationFrame(() => setIsVisible(true));
@@ -97,7 +177,9 @@ export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps)
     }
   }, [isActive]);
 
+  // ────────────────────────────────────────────────────────────────────────────
   // Find and position on current step target
+  // ────────────────────────────────────────────────────────────────────────────
   React.useEffect(() => {
     if (!isActive) return;
 
@@ -109,11 +191,9 @@ export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps)
       if (el) {
         const rect = el.getBoundingClientRect();
         setTargetRect(rect);
-        setTargetMissing(false);
         el.scrollIntoView({ behavior: "smooth", block: "center" });
       } else {
         setTargetRect(null);
-        setTargetMissing(true);
       }
     };
 
@@ -122,22 +202,46 @@ export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps)
     return () => clearTimeout(timer);
   }, [isActive, stepIndex]);
 
-  const handleClose = React.useCallback(() => {
+  // ────────────────────────────────────────────────────────────────────────────
+  // Handlers
+  // ────────────────────────────────────────────────────────────────────────────
+  const handleDismiss = React.useCallback(() => {
+    // Full dismiss: set cooldown, clear resume, close
     setIsVisible(false);
     setTimeout(() => {
       setIsActive(false);
-      setHiddenForDays(COOKIE_NAME, HIDE_DAYS);
+      setHiddenForDays(COOKIE_HIDDEN, HIDE_DAYS);
+      clearResumeStep(COOKIE_RESUME);
+      onEnd?.();
+    }, 150);
+  }, [onEnd]);
+
+  const handlePauseForUpload = React.useCallback(() => {
+    // Pause without cooldown: set resume step, close
+    setIsVisible(false);
+    setTimeout(() => {
+      setIsActive(false);
+      setResumeStep(COOKIE_RESUME, 2); // Resume at step 3 (index 2)
       onEnd?.();
     }, 150);
   }, [onEnd]);
 
   const handleNext = React.useCallback(() => {
-    if (stepIndex < TOUR_STEPS.length - 1) {
-      setStepIndex((i) => i + 1);
-    } else {
-      handleClose();
+    const nextIndex = stepIndex + 1;
+
+    // If on step 2 (index 1) and no CSV, pause for upload
+    if (stepIndex === 1 && !hasCsv) {
+      handlePauseForUpload();
+      return;
     }
-  }, [stepIndex, handleClose]);
+
+    if (nextIndex < TOUR_STEPS.length) {
+      setStepIndex(nextIndex);
+    } else {
+      // Completed tour: set cooldown
+      handleDismiss();
+    }
+  }, [stepIndex, hasCsv, handlePauseForUpload, handleDismiss]);
 
   const handlePrev = React.useCallback(() => {
     if (stepIndex > 0) {
@@ -145,24 +249,32 @@ export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps)
     }
   }, [stepIndex]);
 
-  // Keyboard navigation
+  // ────────────────────────────────────────────────────────────────────────────
+  // Keyboard navigation (optional Esc dismiss)
+  // ────────────────────────────────────────────────────────────────────────────
   React.useEffect(() => {
     if (!isActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-      if (e.key === "ArrowRight" && !targetMissing) handleNext();
+      if (e.key === "Escape" && ALLOW_ESC_DISMISS) handleDismiss();
+      if (e.key === "ArrowRight") handleNext();
       if (e.key === "ArrowLeft") handlePrev();
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isActive, handleClose, handleNext, handlePrev, targetMissing]);
+  }, [isActive, handleDismiss, handleNext, handlePrev]);
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Render
+  // ────────────────────────────────────────────────────────────────────────────
   if (!mounted || !isActive) return null;
 
   const step = TOUR_STEPS[stepIndex];
   if (!step) return null;
+
+  // Determine if this is the pause point (step 2, no CSV)
+  const isPausePoint = stepIndex === 1 && !hasCsv;
 
   return createPortal(
     <TourOverlay
@@ -170,12 +282,11 @@ export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps)
       stepIndex={stepIndex}
       totalSteps={TOUR_STEPS.length}
       targetRect={targetRect}
-      targetMissing={targetMissing}
       isVisible={isVisible}
-      onClose={handleClose}
+      isPausePoint={isPausePoint}
+      onClose={handleDismiss}
       onNext={handleNext}
       onPrev={handlePrev}
-      onBackdropClick={handleClose}
     />,
     document.body
   );
@@ -187,38 +298,53 @@ export function SfsCalculatorTour({ forceStart, onEnd }: SfsCalculatorTourProps)
 
 type Placement = "top" | "bottom" | "left" | "right";
 
+const TOOLTIP_WIDTH = 340;
+const TOOLTIP_HEIGHT = 180;
+const SPOTLIGHT_PADDING = 10;
+const BACKDROP_COLOR = "rgba(0, 0, 0, 0.6)";
+
 interface TourOverlayProps {
   step: TourStep;
   stepIndex: number;
   totalSteps: number;
   targetRect: DOMRect | null;
-  targetMissing: boolean;
   isVisible: boolean;
+  isPausePoint: boolean;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
-  onBackdropClick: () => void;
 }
 
+/**
+ * Overlay component using 4-div layout around spotlight cutout.
+ * This allows:
+ * - Clicking backdrop does NOT dismiss (just blocks)
+ * - Clicking the spotlight target element is possible
+ * - Only X button dismisses the tour
+ */
 function TourOverlay({
   step,
   stepIndex,
   totalSteps,
   targetRect,
-  targetMissing,
   isVisible,
+  isPausePoint,
   onClose,
   onNext,
   onPrev,
-  onBackdropClick,
 }: TourOverlayProps) {
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === totalSteps - 1;
 
+  // Block clicks on backdrop divs (no dismissal)
+  const handleBackdropClick = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Intentionally do nothing - no dismiss
+  }, []);
+
   // Calculate tooltip position with smart placement
   const { tooltipStyle, arrowStyle } = React.useMemo(() => {
-    const TOOLTIP_WIDTH = 340;
-    const TOOLTIP_HEIGHT = 160;
     const PADDING = 16;
     const ARROW_SIZE = 8;
     const GAP = 12;
@@ -230,6 +356,7 @@ function TourOverlay({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
+          width: TOOLTIP_WIDTH,
         } as React.CSSProperties,
         placement: "bottom" as Placement,
         arrowStyle: { display: "none" } as React.CSSProperties,
@@ -304,51 +431,89 @@ function TourOverlay({
     };
   }, [targetRect]);
 
-  const showMissingMessage = targetMissing && step.requiresData;
+  // Determine button label
+  let nextLabel = "Next";
+  if (isLast) {
+    nextLabel = "Done";
+  } else if (isPausePoint) {
+    nextLabel = "Continue after upload";
+  }
+
+  // Calculate spotlight cutout bounds
+  const spotlight = targetRect
+    ? {
+        top: targetRect.top - SPOTLIGHT_PADDING,
+        left: targetRect.left - SPOTLIGHT_PADDING,
+        right: targetRect.right + SPOTLIGHT_PADDING,
+        bottom: targetRect.bottom + SPOTLIGHT_PADDING,
+        width: targetRect.width + SPOTLIGHT_PADDING * 2,
+        height: targetRect.height + SPOTLIGHT_PADDING * 2,
+      }
+    : null;
 
   return (
     <div
       className={[
         "fixed inset-0 z-[9999] transition-opacity duration-150",
-        isVisible ? "opacity-100" : "opacity-0",
+        isVisible ? "opacity-100" : "opacity-0 pointer-events-none",
       ].join(" ")}
     >
-      {/* Backdrop with spotlight cutout */}
-      <svg className="absolute inset-0 h-full w-full" onClick={onBackdropClick}>
-        <defs>
-          <mask id="tour-spotlight-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {targetRect && (
-              <rect
-                x={targetRect.left - 10}
-                y={targetRect.top - 10}
-                width={targetRect.width + 20}
-                height={targetRect.height + 20}
-                rx="12"
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="rgba(0, 0, 0, 0.6)"
-          mask="url(#tour-spotlight-mask)"
+      {/* 4-div backdrop layout around spotlight cutout */}
+      {spotlight ? (
+        <>
+          {/* Top backdrop */}
+          <div
+            className="fixed left-0 right-0 top-0"
+            style={{ height: spotlight.top, background: BACKDROP_COLOR }}
+            onClick={handleBackdropClick}
+          />
+          {/* Left backdrop */}
+          <div
+            className="fixed left-0"
+            style={{
+              top: spotlight.top,
+              width: spotlight.left,
+              height: spotlight.height,
+              background: BACKDROP_COLOR,
+            }}
+            onClick={handleBackdropClick}
+          />
+          {/* Right backdrop */}
+          <div
+            className="fixed right-0"
+            style={{
+              top: spotlight.top,
+              left: spotlight.right,
+              height: spotlight.height,
+              background: BACKDROP_COLOR,
+            }}
+            onClick={handleBackdropClick}
+          />
+          {/* Bottom backdrop */}
+          <div
+            className="fixed bottom-0 left-0 right-0"
+            style={{ top: spotlight.bottom, background: BACKDROP_COLOR }}
+            onClick={handleBackdropClick}
+          />
+        </>
+      ) : (
+        /* Full backdrop when no target */
+        <div
+          className="fixed inset-0"
+          style={{ background: BACKDROP_COLOR }}
+          onClick={handleBackdropClick}
         />
-      </svg>
+      )}
 
       {/* Spotlight ring with subtle glow */}
-      {targetRect && (
+      {spotlight && (
         <div
           className="pointer-events-none absolute rounded-xl border-2 border-[var(--warp-success)] shadow-[0_0_0_4px_rgba(34,197,94,0.15)]"
           style={{
-            top: targetRect.top - 10,
-            left: targetRect.left - 10,
-            width: targetRect.width + 20,
-            height: targetRect.height + 20,
+            top: spotlight.top,
+            left: spotlight.left,
+            width: spotlight.width,
+            height: spotlight.height,
             transition: "all 200ms ease-out",
           }}
         />
@@ -361,11 +526,12 @@ function TourOverlay({
           isVisible ? "scale-100 opacity-100" : "scale-95 opacity-0",
         ].join(" ")}
         style={tooltipStyle}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Arrow */}
         {targetRect && <div className="pointer-events-none" style={arrowStyle} />}
 
-        {/* Close button */}
+        {/* Close button (X) - ONLY way to dismiss */}
         <button
           type="button"
           onClick={onClose}
@@ -384,10 +550,14 @@ function TourOverlay({
             <span className="text-sm font-semibold text-foreground">{step.title}</span>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-            {showMissingMessage
-              ? "Upload a CSV to see this section."
-              : step.content}
+            {step.content}
           </p>
+          {/* Helper line for pause point */}
+          {isPausePoint && (
+            <p className="mt-2 text-[11px] italic text-muted-foreground/70">
+              Upload a CSV whenever you&apos;re ready — we&apos;ll resume tips from Step 3.
+            </p>
+          )}
         </div>
 
         {/* Footer */}
@@ -397,7 +567,7 @@ function TourOverlay({
             Step {stepIndex + 1} of {totalSteps}
           </span>
 
-          {/* Navigation */}
+          {/* Navigation - Next is ALWAYS clickable */}
           <div className="flex items-center gap-2">
             {!isFirst && (
               <Button variant="ghost" size="sm" onClick={onPrev} className="h-7 px-2">
@@ -408,11 +578,10 @@ function TourOverlay({
               variant="primary"
               size="sm"
               onClick={onNext}
-              disabled={showMissingMessage}
               className="h-7 px-3"
             >
-              {isLast ? "Done" : "Next"}
-              {!isLast && <ChevronRight className="ml-1 h-4 w-4" />}
+              {nextLabel}
+              {!isLast && !isPausePoint && <ChevronRight className="ml-1 h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -420,4 +589,3 @@ function TourOverlay({
     </div>
   );
 }
-

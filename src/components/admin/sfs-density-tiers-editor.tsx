@@ -75,35 +75,85 @@ export function SfsDensityTiersEditor() {
 
   const validate = React.useCallback((): boolean => {
     setValidationError(null);
-    const active = rows
-      .filter((r) => r.is_active)
-      .map((r) => ({
-        sortOrder: r.sort_order,
-        minMiles: toNumberOrNull(r.min_miles) ?? NaN,
-        maxMiles: toNumberOrNull(r.max_miles),
-        discountPct: toNumberOrNull(r.discount_pct) ?? NaN,
-        label: r.label || null,
-      }));
-
+    const active = rows.filter((r) => r.is_active).map((r) => ({
+      sortOrder: r.sort_order,
+      minMiles: toNumberOrNull(r.min_miles) ?? NaN,
+      maxMiles: toNumberOrNull(r.max_miles),
+      discountPct: toNumberOrNull(r.discount_pct) ?? NaN,
+      label: r.label || null,
+    }));
     if (active.length < 3) {
       setValidationError("Create at least 3 active tiers.");
       return false;
     }
-
     const hasOpenEnded = active.some((t) => t.maxMiles == null);
     if (!hasOpenEnded) {
       setValidationError("Add an open-ended tier (max_miles empty) for the last band.");
       return false;
     }
-
     const base = validateDensityTiers(active);
     if (!base.ok) {
       setValidationError(base.reason);
       return false;
     }
-
     return true;
   }, [rows]);
+
+  const handleAddTier = () => {
+    setRows((prev) => [
+      ...prev,
+      {
+        sort_order: prev.length ? Math.max(...prev.map((p) => p.sort_order)) + 1 : 1,
+        min_miles: "",
+        max_miles: "",
+        discount_pct: "",
+        label: "",
+        is_active: true,
+      },
+    ]);
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const payload = {
+        tiers: rows.map((r) => ({
+          id: r.id,
+          sort_order: r.sort_order,
+          min_miles: toNumberOrNull(r.min_miles) ?? 0,
+          max_miles: toNumberOrNull(r.max_miles),
+          discount_pct: toNumberOrNull(r.discount_pct) ?? 0,
+          label: r.label.trim() ? r.label.trim() : null,
+          is_active: r.is_active,
+        })),
+      };
+      const resp = await fetch("/api/admin/sfs-density-tiers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const out = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const msg = out?.error ?? "Failed to save tiers";
+        setValidationError(msg);
+        toast.error(msg);
+        return;
+      }
+      toast.success("Saved tiers");
+      await refresh();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateRow = (idx: number, updates: Partial<TierRow>) => {
+    setRows((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx]!, ...updates };
+      return next;
+    });
+  };
 
   return (
     <ContentPanel
@@ -111,67 +161,11 @@ export function SfsDensityTiersEditor() {
       description="Controls distance bands and the weighted density discount (applied only to the base portion)."
       right={
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={() => {
-              setRows((prev) => [
-                ...prev,
-                {
-                  sort_order: prev.length ? Math.max(...prev.map((p) => p.sort_order)) + 1 : 1,
-                  min_miles: "",
-                  max_miles: "",
-                  discount_pct: "",
-                  label: "",
-                  is_active: true,
-                },
-              ]);
-            }}
-          >
+          <Button type="button" variant="outline" size="sm" className="h-8" onClick={handleAddTier}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             Add tier
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            className="h-8"
-            disabled={saving || loading}
-            onClick={async () => {
-              if (!validate()) return;
-              setSaving(true);
-              try {
-                const payload = {
-                  tiers: rows.map((r) => ({
-                    id: r.id,
-                    sort_order: r.sort_order,
-                    min_miles: toNumberOrNull(r.min_miles) ?? 0,
-                    max_miles: toNumberOrNull(r.max_miles),
-                    discount_pct: toNumberOrNull(r.discount_pct) ?? 0,
-                    label: r.label.trim() ? r.label.trim() : null,
-                    is_active: r.is_active,
-                  })),
-                };
-                const resp = await fetch("/api/admin/sfs-density-tiers", {
-                  method: "POST",
-                  headers: { "content-type": "application/json" },
-                  body: JSON.stringify(payload),
-                });
-                const out = await resp.json().catch(() => null);
-                if (!resp.ok) {
-                  const msg = out?.error ?? "Failed to save tiers";
-                  setValidationError(msg);
-                  toast.error(msg);
-                  return;
-                }
-                toast.success("Saved tiers");
-                await refresh();
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
+          <Button type="button" size="sm" className="h-8" disabled={saving || loading} onClick={handleSave}>
             <Save className="mr-1.5 h-3.5 w-3.5" />
             Save
           </Button>
@@ -224,11 +218,7 @@ export function SfsDensityTiersEditor() {
                         value={String(r.sort_order)}
                         onChange={(e) => {
                           const n = Number(e.target.value);
-                          setRows((prev) => {
-                            const next = [...prev];
-                            next[idx] = { ...next[idx]!, sort_order: Number.isFinite(n) ? n : 0 };
-                            return next;
-                          });
+                          updateRow(idx, { sort_order: Number.isFinite(n) ? n : 0 });
                         }}
                         className="h-8 w-[86px] text-right font-mono"
                         disabled={saving}
@@ -237,14 +227,7 @@ export function SfsDensityTiersEditor() {
                     <td className="px-3 py-2">
                       <Input
                         value={r.min_miles}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setRows((prev) => {
-                            const next = [...prev];
-                            next[idx] = { ...next[idx]!, min_miles: v };
-                            return next;
-                          });
-                        }}
+                        onChange={(e) => updateRow(idx, { min_miles: e.target.value })}
                         className="h-8 w-[110px] text-right font-mono"
                         disabled={saving}
                       />
@@ -252,14 +235,7 @@ export function SfsDensityTiersEditor() {
                     <td className="px-3 py-2">
                       <Input
                         value={r.max_miles}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setRows((prev) => {
-                            const next = [...prev];
-                            next[idx] = { ...next[idx]!, max_miles: v };
-                            return next;
-                          });
-                        }}
+                        onChange={(e) => updateRow(idx, { max_miles: e.target.value })}
                         placeholder="(open)"
                         className="h-8 w-[110px] text-right font-mono"
                         disabled={saving}
@@ -268,34 +244,18 @@ export function SfsDensityTiersEditor() {
                     <td className="px-3 py-2">
                       <Input
                         value={r.discount_pct}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setRows((prev) => {
-                            const next = [...prev];
-                            next[idx] = { ...next[idx]!, discount_pct: v };
-                            return next;
-                          });
-                        }}
+                        onChange={(e) => updateRow(idx, { discount_pct: e.target.value })}
                         className="h-8 w-[110px] text-right font-mono"
                         disabled={saving}
                       />
                       {warnHigh ? (
-                        <div className="mt-1 text-[11px] text-amber-500">
-                          Note: cap stays ≤20%.
-                        </div>
+                        <div className="mt-1 text-[10px] text-amber-500">Note: cap stays ≤20%.</div>
                       ) : null}
                     </td>
                     <td className="px-3 py-2">
                       <Input
                         value={r.label}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setRows((prev) => {
-                            const next = [...prev];
-                            next[idx] = { ...next[idx]!, label: v };
-                            return next;
-                          });
-                        }}
+                        onChange={(e) => updateRow(idx, { label: e.target.value })}
                         placeholder="e.g. 0–10 mi"
                         className="h-8"
                         disabled={saving}
@@ -308,13 +268,7 @@ export function SfsDensityTiersEditor() {
                         size="sm"
                         className="h-8"
                         disabled={saving}
-                        onClick={() => {
-                          setRows((prev) => {
-                            const next = [...prev];
-                            next[idx] = { ...next[idx]!, is_active: !next[idx]!.is_active };
-                            return next;
-                          });
-                        }}
+                        onClick={() => updateRow(idx, { is_active: !r.is_active })}
                       >
                         {r.is_active ? "Active" : "Inactive"}
                       </Button>

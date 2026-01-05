@@ -530,7 +530,11 @@ export function SfsCalculatorV2({
       </div>
 
       {/* Guided tour */}
-      <SfsCalculatorTour forceStart={tourForceStart} onEnd={handleTourEnd} />
+      <SfsCalculatorTour
+        forceStart={tourForceStart}
+        hasCsv={!!uploadedStops}
+        onEnd={handleTourEnd}
+      />
     </TooltipProvider>
   );
 }
