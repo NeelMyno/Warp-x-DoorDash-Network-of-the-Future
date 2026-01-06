@@ -5,8 +5,7 @@ import {
   type ModuleSectionKey,
 } from "@/config/modules";
 import { getModuleBySlug } from "@/lib/modules/registry";
-import { Blocks, isBlocksEmpty } from "@/components/content/blocks";
-import { NetworkEnhancementsModule } from "@/components/modules/network-enhancements/NetworkEnhancementsModule";
+import { Blocks, isBlocksEmpty, filterTextOnlyBlocks } from "@/components/content/blocks";
 import { resolveModuleLayout } from "@/components/modules/layouts/resolve-module-layout";
 import { requireUser } from "@/lib/auth/require-user";
 import { getModuleContent } from "@/lib/content/get-module-content";
@@ -23,10 +22,10 @@ export default async function ModulePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string; sub?: string; variant?: string; panel?: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { slug } = await params;
-  const { tab, sub, variant, panel } = await searchParams;
+  const { tab } = await searchParams;
   const { role, supabase } = await requireUser();
 
   // Redirect old SFS calculator URL to new module
@@ -43,54 +42,25 @@ export default async function ModulePage({
     redirect("/m/sfs-calculator");
   }
 
-  if (slug === "network-enhancements") {
-    const normalizedSub =
-      sub === "spoke" || sub === "network" ? sub : "hub";
-    if (normalizedSub === "network") {
-      const shouldRedirect =
-        sub !== normalizedSub || !!variant || !!panel;
-      if (shouldRedirect) {
-        redirect(
-          `/m/${slug}?sub=${normalizedSub}`,
-        );
-      }
-    } else {
-      const normalizedVariant = variant === "future" ? "future" : "example";
-      const shouldRedirect =
-        sub !== normalizedSub || variant !== normalizedVariant || panel;
-      if (shouldRedirect) {
-        redirect(
-          `/m/${slug}?sub=${normalizedSub}&variant=${encodeURIComponent(normalizedVariant)}`,
-        );
-      }
-    }
-
-    return (
-      <NetworkEnhancementsModule
-        slug={slug}
-        role={role}
-        subParam={sub}
-        variantParam={variant}
-        supabase={supabase}
-      />
-    );
-  }
-
   const resolved = await getModuleContent(slug);
   if (!resolved) notFound();
 
   // Build sections for the layout
+  // For "spoke" module: enforce text-only (prose/bullets) - filter out image/pdf
+  const isTextOnly = slug === "spoke";
+
   const sections = SECTION_KEYS.map((key) => {
     const label = MODULE_SECTIONS.find((s) => s.key === key)?.label ?? key;
     const section = resolved.sections[key];
-    const isEmpty = isBlocksEmpty(section.blocks);
+    const blocks = isTextOnly ? filterTextOnlyBlocks(section.blocks) : section.blocks;
+    const isEmpty = isBlocksEmpty(blocks);
 
     return {
       key,
       label,
       isEmpty,
       content: (
-        <Blocks blocks={section.blocks} showImageHints={role === "admin"} />
+        <Blocks blocks={blocks} showImageHints={role === "admin"} />
       ),
     };
   });
@@ -122,12 +92,16 @@ export default async function ModulePage({
     }
   }
 
+  // Collect all blocks for PDF layout
+  const allBlocks = Object.values(resolved.sections).flatMap((s) => s.blocks);
+
   // Resolve and render the appropriate layout
   return resolveModuleLayout({
     moduleEntry,
     title: resolved.moduleMeta.title,
     description: resolved.moduleMeta.description,
     sections,
+    allBlocks,
     rateCards,
     densityTiers,
     configError,

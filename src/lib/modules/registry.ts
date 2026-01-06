@@ -4,18 +4,20 @@
  */
 
 /** Layout type for module pages */
-export type ModuleLayoutType = "narrative" | "calculator";
+export type ModuleLayoutType = "narrative" | "calculator" | "pdf";
 
 /** Known module slugs (for type safety) */
 export type ModuleSlug =
   | "big-and-bulky"
   | "sfs"
   | "sfs-calculator"
-  | "network-enhancements"
+  | "automated-hubs"
+  | "spoke"
   | "middle-mile-to-spokes"
   | "first-mile-to-hubs-or-spokes"
   | "returns"
-  | "store-replenishments";
+  | "store-replenishments"
+  | "year-in-review";
 
 /** Tab definition for calculator layouts */
 export interface ModuleTabs {
@@ -62,9 +64,16 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     navIconKey: "calculator",
   },
   {
-    slug: "network-enhancements",
-    name: "Network enhancements",
-    description: "Hub, Spoke, and Network artifacts (diagram + SOP PDFs).",
+    slug: "automated-hubs",
+    name: "Automated Hubs",
+    description: "Automated hub facility operations and documentation.",
+    layout: "pdf",
+    navIconKey: "warehouse",
+  },
+  {
+    slug: "spoke",
+    name: "Spoke",
+    description: "Spoke facility operations and last-mile integration.",
     layout: "narrative",
     navIconKey: "stack",
   },
@@ -95,6 +104,13 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     description: "Scheduled restocking from distribution centers to stores.",
     layout: "narrative",
     navIconKey: "stack",
+  },
+  {
+    slug: "year-in-review",
+    name: "2025 Year in Review",
+    description: "Completed loads by vehicle type for 2025.",
+    layout: "narrative",
+    navIconKey: "chart",
   },
 ];
 

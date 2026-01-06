@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { IconGrid, IconShield, IconStack, IconUser } from "@/components/icons";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
+  BarChart3,
   Building2,
   Calculator,
   Lock,
@@ -21,6 +22,7 @@ import {
   Route,
   RotateCcw,
   ShoppingBag,
+  Warehouse,
 } from "lucide-react";
 import {
   Tooltip,
@@ -38,6 +40,9 @@ const MODULE_ICON_BY_SLUG = {
   "first-mile-to-hubs-or-spokes": Building2,
   returns: RotateCcw,
   "store-replenishments": RefreshCw,
+  "automated-hubs": Warehouse,
+  spoke: Building2,
+  "year-in-review": BarChart3,
 } as const;
 
 function SidebarItem({

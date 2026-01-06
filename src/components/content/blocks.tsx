@@ -1,8 +1,10 @@
 import type { ContentBlock } from "@/config/modules";
 import { BulletBlock } from "@/components/blocks/BulletBlock";
 import { ImageBlock } from "@/components/blocks/ImageBlock";
+import { PdfBlock } from "@/components/blocks/PdfBlock";
 import { ProseBlock } from "@/components/blocks/ProseBlock";
 import { ContentPanel } from "@/components/panels/ContentPanel";
+import { MetricsFlowCard } from "@/components/modules/year-in-review";
 
 /**
  * Renders a list of content blocks in a single-column layout.
@@ -59,6 +61,19 @@ export function Blocks({
           );
         }
 
+        if (block.type === "pdf") {
+          return (
+            <PdfBlock
+              key={key}
+              url={block.url}
+              title={block.title}
+              filename={block.filename}
+              caption={block.caption}
+              showAdminHint={showImageHints}
+            />
+          );
+        }
+
         if (block.type === "empty") {
           return (
             <ContentPanel
@@ -74,6 +89,18 @@ export function Blocks({
           );
         }
 
+        if (block.type === "metrics_flow") {
+          return (
+            <MetricsFlowCard
+              key={key}
+              title={block.title}
+              subtitle={block.subtitle}
+              totalLabel={block.totalLabel}
+              metrics={block.metrics}
+            />
+          );
+        }
+
         // Unknown block types are ignored (defensive fallback for legacy data)
         return null;
       })}
@@ -86,4 +113,14 @@ export function Blocks({
  */
 export function isBlocksEmpty(blocks: ContentBlock[]): boolean {
   return blocks.length === 0;
+}
+
+/**
+ * Filter blocks to text-only types (prose, bullets).
+ * Used for modules like Spoke that should only show text content.
+ */
+export function filterTextOnlyBlocks(blocks: ContentBlock[]): ContentBlock[] {
+  return blocks.filter(
+    (block) => block.type === "prose" || block.type === "bullets"
+  );
 }

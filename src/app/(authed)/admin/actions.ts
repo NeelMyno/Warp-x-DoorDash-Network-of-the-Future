@@ -35,12 +35,33 @@ function isValidModuleSlug(slug: string) {
   return MODULES.some((m) => m.slug === slug);
 }
 
+/**
+ * Sanitize blocks for database storage.
+ * Strips signed URLs to prevent leaking temporary credentials.
+ */
+function sanitizeBlocksForStorage(blocks: ContentBlock[]): ContentBlock[] {
+  return blocks.map((block) => {
+    if (block.type === "image") {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { url, ...rest } = block;
+      return rest;
+    }
+    if (block.type === "pdf") {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { url, ...rest } = block;
+      return rest;
+    }
+    return block;
+  });
+}
+
 function validateBlocksForWrite(input: unknown): ContentBlock[] | null {
   if (!Array.isArray(input)) return null;
   const parsed = parseBlocksJson(input);
   if (!parsed) return null;
   if (parsed.length !== input.length) return null;
-  return parsed;
+  // Strip signed URLs before persisting
+  return sanitizeBlocksForStorage(parsed);
 }
 
 function auditErrorMessage(error: unknown) {

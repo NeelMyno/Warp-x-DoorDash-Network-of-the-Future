@@ -31,7 +31,7 @@ import type {
   SfsStop,
   VehicleType,
 } from "@/lib/sfs-calculator/types";
-import { DEFAULT_INPUTS, SFS_MARKETS } from "@/lib/sfs-calculator/types";
+import { DEFAULT_INPUTS, getDefaultMarketId } from "@/lib/sfs-calculator/types";
 import type { SfsRateCardsErrorReason } from "@/lib/sfs-calculator/get-rate-cards";
 import { validateSfsInputs } from "@/lib/sfs-calculator/validate";
 import {
@@ -63,6 +63,7 @@ import {
   type AnchorListItem,
   type SortOption,
 } from "@/components/modules/sfs/results";
+import { MarketCombobox } from "@/components/modules/sfs-calculator/MarketCombobox";
 
 export interface SfsConfigError {
   reason: SfsRateCardsErrorReason;
@@ -81,14 +82,11 @@ interface Props {
   isAdmin?: boolean;
 }
 
-const OTHER_MARKET_VALUE = "__other__";
-
 function getInitialInputs(): SfsCalculatorInputs {
-  const defaultMarket = SFS_MARKETS[0] ?? "";
   const defaultVehicle: VehicleType = "Cargo Van";
   return {
     ...DEFAULT_INPUTS,
-    market: defaultMarket,
+    market: getDefaultMarketId(),
     vehicle_type: defaultVehicle,
   };
 }
@@ -128,12 +126,6 @@ export function SfsCalculator({
 
   const validationErrors = validateSfsInputs(inputs);
   const hasErrors = Object.keys(validationErrors).length > 0;
-
-  const marketSelectValue = React.useMemo(() => {
-    return SFS_MARKETS.includes(inputs.market as (typeof SFS_MARKETS)[number])
-      ? inputs.market
-      : OTHER_MARKET_VALUE;
-  }, [inputs.market]);
 
   const rateCard = React.useMemo(
     () => rateCards.find((r) => r.vehicle_type === inputs.vehicle_type) ?? null,
@@ -610,31 +602,11 @@ export function SfsCalculator({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-[11px] text-muted-foreground">Market</Label>
-              <Select
-                value={marketSelectValue}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === OTHER_MARKET_VALUE) {
-                    setInputs((prev) => ({ ...prev, market: "" }));
-                  } else {
-                    setInputs((prev) => ({ ...prev, market: v }));
-                  }
-                }}
-                options={[
-                  ...SFS_MARKETS.map((m) => ({ value: m, label: m })),
-                  { value: OTHER_MARKET_VALUE, label: "Other…" },
-                ]}
-                placeholder="Select market"
+              <MarketCombobox
+                value={inputs.market}
+                onChange={(market) => setInputs((prev) => ({ ...prev, market }))}
                 invalid={!!validationErrors.market}
               />
-              {marketSelectValue === OTHER_MARKET_VALUE ? (
-                <Input
-                  value={inputs.market}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, market: e.target.value }))}
-                  placeholder="Enter market"
-                  className="h-9"
-                />
-              ) : null}
               {validationErrors.market ? (
                 <p className="text-[11px] text-[var(--warp-danger)]">{validationErrors.market}</p>
               ) : null}

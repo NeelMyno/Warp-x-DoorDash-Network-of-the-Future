@@ -1,9 +1,11 @@
 import * as React from "react";
 
+import type { ContentBlock } from "@/config/modules";
 import type { ModuleRegistryEntry } from "@/lib/modules/registry";
 import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
 import type { SfsConfigError } from "../sfs/sfs-calculator";
 import { NarrativeModuleLayout } from "./narrative-module-layout";
+import { PdfModuleLayout } from "./pdf-module-layout";
 import { SfsCalculatorModuleLayout } from "../sfs/sfs-calculator-module-layout";
 
 export interface ModuleSection {
@@ -18,6 +20,8 @@ export interface ResolveModuleLayoutProps {
   title: string;
   description: string;
   sections: ModuleSection[];
+  /** All content blocks (for PDF layout) */
+  allBlocks?: ContentBlock[];
   /** Active tab for calculator layouts */
   activeTab?: string;
   /** Rate cards for SFS calculator */
@@ -41,6 +45,7 @@ export function resolveModuleLayout({
   title,
   description,
   sections,
+  allBlocks = [],
   rateCards = [],
   densityTiers,
   configError,
@@ -58,6 +63,18 @@ export function resolveModuleLayout({
           densityTiers={densityTiers}
           configError={configError}
           adminWarnings={adminWarnings}
+          isAdmin={isAdmin}
+        />
+      );
+
+    case "pdf":
+      // PDF-only module (e.g., Automated Hubs)
+      return (
+        <PdfModuleLayout
+          title={title}
+          description={description}
+          blocks={allBlocks}
+          moduleSlug={moduleEntry.slug}
           isAdmin={isAdmin}
         />
       );

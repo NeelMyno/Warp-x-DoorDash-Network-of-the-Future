@@ -8,10 +8,15 @@ export type StopType = "Anchor" | "Satellite";
 export const SFS_VEHICLE_TYPES: VehicleType[] = ["Cargo Van", "26' Box Truck"];
 
 /**
- * @deprecated Use SFS_TOP_MARKETS from './markets' instead.
- * Kept for backward compatibility.
+ * @deprecated Use SFS_TOP_10_LOCATIONS from './markets' instead.
+ * Kept for backward compatibility - returns labels for display purposes.
  */
 export { SFS_TOP_MARKETS as SFS_MARKETS } from "./markets";
+
+/**
+ * Get the default market ID for initial state.
+ */
+export { getDefaultMarketId } from "./markets";
 
 /** Required upload headers for SFS calculator V3 (distance-band density discounts). */
 export const SFS_STORES_UPLOAD_REQUIRED_HEADERS = [

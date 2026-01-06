@@ -1,11 +1,11 @@
 import type { ContentBlock, ModuleConfig, ModuleSectionKey } from "@/config/modules";
-import { getModuleBySlug } from "@/config/modules";
+import { getModuleContentDefaults } from "@/config/modules";
 import { parseBlocksJson } from "@/lib/content/blocks";
 import { getSignedAssetUrl } from "@/lib/assets/get-signed-url";
 import { createClient } from "@/lib/supabase/server";
 
 export type ResolvedModuleContent = {
-  moduleMeta: Pick<ModuleConfig, "slug" | "title" | "description" | "layoutVariant">;
+  moduleMeta: Pick<ModuleConfig, "slug" | "title" | "description">;
   sections: Record<
     ModuleSectionKey,
     {
@@ -21,59 +21,90 @@ const SECTION_KEYS: ModuleSectionKey[] = ["end-vision", "progress", "roadmap"];
 export async function getModuleContent(
   slug: string,
 ): Promise<ResolvedModuleContent | null> {
-  const moduleConfig = getModuleBySlug(slug);
+  const moduleConfig = getModuleContentDefaults(slug);
   if (!moduleConfig) return null;
 
   let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
   const assetPathById = new Map<string, string | null>();
   const signedUrlByPath = new Map<string, string | null>();
 
-  async function resolveImageBlocks(blocks: ContentBlock[]) {
+  async function resolveAssetBlocks(blocks: ContentBlock[]) {
     const client = supabase;
     if (!client) return blocks;
 
     const resolved = await Promise.all(
       blocks.map(async (block) => {
-        if (block.type !== "image") return block;
+        // Handle image blocks
+        if (block.type === "image") {
+          const assetId = typeof block.assetId === "string" ? block.assetId : null;
+          const fallbackPath = typeof block.path === "string" ? block.path : null;
 
-        const assetId = typeof block.assetId === "string" ? block.assetId : null;
-        const fallbackPath = typeof block.path === "string" ? block.path : null;
+          let resolvedPath: string | null = fallbackPath;
 
-        let resolvedPath: string | null = fallbackPath;
-
-        if (assetId) {
-          if (assetPathById.has(assetId)) {
-            resolvedPath = assetPathById.get(assetId) ?? fallbackPath;
-          } else {
-            const { data, error } = await client
-              .from("assets")
-              .select("path")
-              .eq("id", assetId)
-              .maybeSingle();
-            const pathFromDb = !error && data?.path ? (data.path as string) : null;
-            assetPathById.set(assetId, pathFromDb);
-            resolvedPath = pathFromDb ?? fallbackPath;
+          if (assetId) {
+            if (assetPathById.has(assetId)) {
+              resolvedPath = assetPathById.get(assetId) ?? fallbackPath;
+            } else {
+              const { data, error } = await client
+                .from("assets")
+                .select("path")
+                .eq("id", assetId)
+                .maybeSingle();
+              const pathFromDb = !error && data?.path ? (data.path as string) : null;
+              assetPathById.set(assetId, pathFromDb);
+              resolvedPath = pathFromDb ?? fallbackPath;
+            }
           }
+
+          if (!resolvedPath) return { ...block, url: undefined };
+
+          if (!signedUrlByPath.has(resolvedPath)) {
+            const { url } = await getSignedAssetUrl({
+              path: resolvedPath,
+              expiresIn: 3600,
+              supabase: client,
+            });
+            signedUrlByPath.set(resolvedPath, url);
+          }
+
+          const url = signedUrlByPath.get(resolvedPath) ?? null;
+
+          return {
+            ...block,
+            path: resolvedPath ?? block.path,
+            url: url ?? undefined,
+          };
         }
 
-        if (!resolvedPath) return { ...block, url: undefined };
+        // Handle PDF blocks
+        if (block.type === "pdf") {
+          const pdfPath = typeof block.path === "string" ? block.path : null;
 
-        if (!signedUrlByPath.has(resolvedPath)) {
-          const { url } = await getSignedAssetUrl({
-            path: resolvedPath,
-            expiresIn: 3600,
-            supabase: client,
-          });
-          signedUrlByPath.set(resolvedPath, url);
+          if (!pdfPath) return { ...block, url: null };
+
+          if (!signedUrlByPath.has(pdfPath)) {
+            try {
+              const { url } = await getSignedAssetUrl({
+                path: pdfPath,
+                expiresIn: 3600,
+                supabase: client,
+              });
+              signedUrlByPath.set(pdfPath, url);
+            } catch {
+              // If signing fails, set null to avoid crash
+              signedUrlByPath.set(pdfPath, null);
+            }
+          }
+
+          const url = signedUrlByPath.get(pdfPath) ?? null;
+
+          return {
+            ...block,
+            url,
+          };
         }
 
-        const url = signedUrlByPath.get(resolvedPath) ?? null;
-
-        return {
-          ...block,
-          path: resolvedPath ?? block.path,
-          url: url ?? undefined,
-        };
+        return block;
       }),
     );
 
@@ -134,7 +165,7 @@ export async function getModuleContent(
   }
 
   for (const key of SECTION_KEYS) {
-    resolved[key] = { ...resolved[key], blocks: await resolveImageBlocks(resolved[key].blocks) };
+    resolved[key] = { ...resolved[key], blocks: await resolveAssetBlocks(resolved[key].blocks) };
   }
 
   return {
@@ -142,7 +173,6 @@ export async function getModuleContent(
       slug: moduleConfig.slug,
       title: moduleConfig.title,
       description: moduleConfig.description,
-      layoutVariant: moduleConfig.layoutVariant,
     },
     sections: resolved,
   };

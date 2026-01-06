@@ -1,11 +1,15 @@
 export type ModuleSectionKey = "end-vision" | "progress" | "roadmap";
 
-/**
- * Layout variant for module pages.
- * - "standard": Single-column layout with bullets/prose blocks.
- * - "sfs_calculator": Reserved for SFS module with calculator UI (future).
- */
-export type ModuleLayoutVariant = "standard" | "sfs_calculator";
+/** Icon keys for metrics_flow block items */
+export type MetricsFlowIconKey = "box-truck" | "cargo-van" | "trailer" | "package" | "warehouse";
+
+/** Single metric item in a metrics_flow block */
+export interface MetricsFlowItem {
+  key: string;         // Stable identifier (e.g., "box_truck")
+  label: string;       // Display label (e.g., "Box Trucks")
+  value: number;       // Integer >= 0
+  icon: MetricsFlowIconKey;
+}
 
 export type ContentBlock =
   | {
@@ -31,16 +35,34 @@ export type ContentBlock =
       url?: string;
     }
   | {
+      type: "pdf";
+      title?: string;
+      path?: string | null;
+      filename?: string | null;
+      caption?: string | null;
+      url?: string | null;
+    }
+  | {
       type: "empty";
       title: string;
       description?: string;
+    }
+  | {
+      type: "metrics_flow";
+      title: string;              // e.g., "Completed loads"
+      subtitle?: string;          // e.g., "by vehicle type"
+      totalLabel: string;         // e.g., "Total completed loads"
+      metrics: MetricsFlowItem[]; // Array of metrics (min 2 required)
     };
 
+/**
+ * Module content configuration (default seed data).
+ * The layout type is determined by the registry, not here.
+ */
 export type ModuleConfig = {
   slug: string;
   title: string;
   description: string;
-  layoutVariant: ModuleLayoutVariant;
   sections: Record<ModuleSectionKey, { label: string; blocks: ContentBlock[] }>;
 };
 
@@ -83,7 +105,6 @@ export const MODULES: ModuleConfig[] = [
     slug: "big-and-bulky",
     title: "Big and Bulky",
     description: "Oversized, high-touch delivery flows and network design.",
-    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Predictable appointment-aware delivery with room-of-choice options.",
@@ -107,7 +128,6 @@ export const MODULES: ModuleConfig[] = [
     slug: "sfs",
     title: "SFS",
     description: "Ship-from-store fulfillment and inventory-aware routing.",
-    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Dynamic routing based on inventory confidence and promised delivery date.",
@@ -131,7 +151,6 @@ export const MODULES: ModuleConfig[] = [
     slug: "sfs-calculator",
     title: "SFS Calculator",
     description: "Upload stores and estimate density savings.",
-    layoutVariant: "sfs_calculator",
     sections: makeSections({
       endVision: [],
       progress: [],
@@ -139,10 +158,49 @@ export const MODULES: ModuleConfig[] = [
     }),
   },
   {
+    slug: "automated-hubs",
+    title: "Automated Hubs",
+    description: "Automated hub facility operations and documentation.",
+    sections: {
+      "end-vision": {
+        label: "End vision",
+        // PDF placeholder: admin sees empty state prompting PDF selection
+        blocks: [{ type: "pdf", title: "Automated Hubs Overview", path: null, filename: null }],
+      },
+      progress: {
+        label: "Progress",
+        blocks: [], // PDF-only module - admin uploads PDF via Content Studio
+      },
+      roadmap: {
+        label: "Roadmap",
+        blocks: [], // PDF-only module - admin uploads PDF via Content Studio
+      },
+    },
+  },
+  {
+    slug: "spoke",
+    title: "Spoke",
+    description: "Spoke facility operations and last-mile integration.",
+    sections: {
+      "end-vision": {
+        label: "End vision",
+        // Text placeholder: gives admin a starting point
+        blocks: [{ type: "prose", title: "Overview", content: "Content coming soon." }],
+      },
+      progress: {
+        label: "Progress",
+        blocks: [], // Text-only module - admin adds prose/bullets via Content Studio
+      },
+      roadmap: {
+        label: "Roadmap",
+        blocks: [], // Text-only module - admin adds prose/bullets via Content Studio
+      },
+    },
+  },
+  {
     slug: "middle-mile-to-spokes",
     title: "Middle Mile to spokes",
     description: "Linehaul moves from hubs to spokes with tight cutoff control.",
-    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Scheduled linehauls with dynamic capacity based on forecasted volume.",
@@ -166,7 +224,6 @@ export const MODULES: ModuleConfig[] = [
     slug: "first-mile-to-hubs-or-spokes",
     title: "First-mile to hubs or spokes",
     description: "Origin pickups and consolidation into the network.",
-    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Pickup SLAs aligned to merchant operating hours and dock capacity.",
@@ -190,7 +247,6 @@ export const MODULES: ModuleConfig[] = [
     slug: "returns",
     title: "Returns",
     description: "Reverse logistics with fast disposition and visibility.",
-    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Customer-friendly dropoff/pickup options with clear tracking.",
@@ -214,7 +270,6 @@ export const MODULES: ModuleConfig[] = [
     slug: "store-replenishments",
     title: "Store replenishments",
     description: "Inbound flows that keep stores in stock with tight scheduling.",
-    layoutVariant: "standard",
     sections: makeSections({
       endVision: [
         "Consolidated inbound planning across hubs/spokes and store backrooms.",
@@ -234,6 +289,37 @@ export const MODULES: ModuleConfig[] = [
       ],
     }),
   },
+  {
+    slug: "year-in-review",
+    title: "2025 Year in Review",
+    description: "Completed loads by vehicle type for 2025.",
+    sections: {
+      "end-vision": {
+        label: "Overview",
+        blocks: [
+          {
+            type: "metrics_flow",
+            title: "Completed Loads",
+            subtitle: "by vehicle type",
+            totalLabel: "Total completed loads",
+            metrics: [
+              { key: "box_truck", label: "Box Trucks", value: 1989, icon: "box-truck" },
+              { key: "cargo_van", label: "Cargo Vans", value: 712, icon: "cargo-van" },
+              { key: "trailer_53ft", label: "53ft Trailers", value: 1392, icon: "trailer" },
+            ],
+          } as ContentBlock,
+        ],
+      },
+      progress: {
+        label: "Progress",
+        blocks: [],
+      },
+      roadmap: {
+        label: "Roadmap",
+        blocks: [],
+      },
+    },
+  },
 ];
 
 export function isModuleSectionKey(
@@ -242,6 +328,10 @@ export function isModuleSectionKey(
   return value === "end-vision" || value === "progress" || value === "roadmap";
 }
 
-export function getModuleBySlug(slug: string) {
+/**
+ * Get default module content config by slug.
+ * For module registration, use registry.ts instead.
+ */
+export function getModuleContentDefaults(slug: string) {
   return MODULES.find((m) => m.slug === slug) ?? null;
 }
