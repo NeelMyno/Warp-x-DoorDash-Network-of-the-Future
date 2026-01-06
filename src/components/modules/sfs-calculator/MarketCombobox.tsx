@@ -237,7 +237,7 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
                       key={loc.id}
                       type="button"
                       onClick={() => selectLocation(loc.id)}
-                      title={`${loc.airportCode} — ${loc.city}, ${loc.state} • ZIP ${loc.zip}`}
+                      title={`${loc.city}, ${loc.state}`}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors",
                         value === loc.id
@@ -245,8 +245,6 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
                           : "bg-muted/60 text-foreground hover:bg-muted"
                       )}
                     >
-                      <span className="font-semibold">{loc.airportCode}</span>
-                      <span className="opacity-70">•</span>
                       <span>{loc.city}</span>
                       {value === loc.id && <Check className="h-3 w-3" />}
                     </button>

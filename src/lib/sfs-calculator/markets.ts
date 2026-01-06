@@ -301,10 +301,10 @@ export function searchLocations(query: string): CrossdockLocation[] {
 
 /**
  * Get a display-friendly short label for a location.
- * Format: "AIRPORT — City, ST"
+ * Format: "City, ST"
  */
 export function getDisplayLabel(loc: CrossdockLocation): string {
-  return `${loc.airportCode} — ${loc.city}, ${loc.state}`;
+  return `${loc.city}, ${loc.state}`;
 }
 
 /**
