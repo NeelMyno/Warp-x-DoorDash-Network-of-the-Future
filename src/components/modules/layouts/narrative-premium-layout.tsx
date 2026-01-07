@@ -115,6 +115,7 @@ const VisionPanel = React.forwardRef<
       id={id}
       aria-label={title}
       className={cn(
+        // Outer root: overflow-hidden ensures all FX are clipped to rounded shape
         "group relative flex h-full flex-col overflow-hidden rounded-xl",
         "border border-border/35",
         "bg-gradient-to-br from-card/40 via-card/30 to-card/20",
@@ -129,25 +130,31 @@ const VisionPanel = React.forwardRef<
       )}
       style={{ animationFillMode: "backwards" }}
     >
-      {/* Left accent rail */}
+      {/* ══ FX Layer (clipped by parent overflow-hidden) ══ */}
       <div
-        className="absolute bottom-0 left-0 top-0 w-[2px]"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(0,255,51,0.30) 0%, rgba(0,255,51,0.12) 70%, transparent 100%)",
-        }}
+        className="pointer-events-none absolute inset-0 rounded-[inherit]"
         aria-hidden="true"
-      />
-      {/* Corner glow - very subtle */}
-      <div
-        className="pointer-events-none absolute -left-12 -top-12 h-24 w-24 opacity-[0.08]"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(0,255,51,0.25) 0%, transparent 60%)",
-        }}
-        aria-hidden="true"
-      />
-      <div className="relative flex flex-1 flex-col p-5 lg:p-6">
+      >
+        {/* Left accent rail - inside bounds */}
+        <div
+          className="absolute bottom-0 left-0 top-0 w-[2px]"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(0,255,51,0.28) 0%, rgba(0,255,51,0.10) 70%, transparent 100%)",
+          }}
+        />
+        {/* Corner glow - positioned inside panel, uses blur for soft edge */}
+        <div
+          className="absolute left-0 top-0 h-28 w-28 opacity-[0.06] blur-2xl"
+          style={{
+            background:
+              "radial-gradient(circle at 0% 0%, rgba(0,255,51,0.5) 0%, transparent 70%)",
+          }}
+        />
+      </div>
+
+      {/* ══ Content Layer ══ */}
+      <div className="relative z-10 flex flex-1 flex-col p-5 lg:p-6">
         {/* Compact label header */}
         <div className="mb-3 flex items-center gap-2">
           <div
@@ -201,6 +208,7 @@ const ProgressPanel = React.forwardRef<
       ref={ref}
       id={id}
       className={cn(
+        // Outer root: overflow-hidden ensures all FX are clipped
         "group relative flex h-full flex-col overflow-hidden rounded-xl",
         "border border-border/35",
         "bg-card/25 backdrop-blur-sm",
@@ -214,16 +222,23 @@ const ProgressPanel = React.forwardRef<
       )}
       style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
     >
-      {/* Top accent line */}
+      {/* ══ FX Layer (clipped by parent overflow-hidden) ══ */}
       <div
-        className="absolute left-0 right-0 top-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.15) 30%, rgba(0,255,51,0.20) 50%, rgba(0,255,51,0.15) 70%, transparent 100%)",
-        }}
+        className="pointer-events-none absolute inset-0 rounded-[inherit]"
         aria-hidden="true"
-      />
-      <div className="relative flex flex-1 flex-col p-4 lg:p-5">
+      >
+        {/* Top accent line */}
+        <div
+          className="absolute left-0 right-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.15) 30%, rgba(0,255,51,0.18) 50%, rgba(0,255,51,0.15) 70%, transparent 100%)",
+          }}
+        />
+      </div>
+
+      {/* ══ Content Layer ══ */}
+      <div className="relative z-10 flex flex-1 flex-col p-4 lg:p-5">
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
@@ -276,6 +291,7 @@ const RoadmapPanel = React.forwardRef<
       ref={ref}
       id={id}
       className={cn(
+        // Outer root: overflow-hidden ensures all FX are clipped
         "group relative flex h-full flex-col overflow-hidden rounded-xl",
         "border border-border/35",
         "bg-card/25 backdrop-blur-sm",
@@ -289,16 +305,23 @@ const RoadmapPanel = React.forwardRef<
       )}
       style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
     >
-      {/* Left accent rail */}
+      {/* ══ FX Layer (clipped by parent overflow-hidden) ══ */}
       <div
-        className="absolute bottom-0 left-0 top-0 w-px"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(0,255,51,0.18) 0%, rgba(0,255,51,0.08) 70%, transparent 100%)",
-        }}
+        className="pointer-events-none absolute inset-0 rounded-[inherit]"
         aria-hidden="true"
-      />
-      <div className="relative flex flex-1 flex-col p-4 lg:p-5">
+      >
+        {/* Left accent rail */}
+        <div
+          className="absolute bottom-0 left-0 top-0 w-px"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(0,255,51,0.16) 0%, rgba(0,255,51,0.06) 70%, transparent 100%)",
+          }}
+        />
+      </div>
+
+      {/* ══ Content Layer ══ */}
+      <div className="relative z-10 flex flex-1 flex-col p-4 lg:p-5">
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
