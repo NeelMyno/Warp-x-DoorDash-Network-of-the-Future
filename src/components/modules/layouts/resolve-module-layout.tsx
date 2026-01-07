@@ -6,6 +6,7 @@ import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
 import type { SfsConfigError } from "../sfs/sfs-calculator";
 import { FullBleedSingleSectionLayout } from "./full-bleed-single-section-layout";
 import { NarrativeModuleLayout } from "./narrative-module-layout";
+import { NarrativePremiumLayout } from "./narrative-premium-layout";
 import { PdfModuleLayout } from "./pdf-module-layout";
 import { SfsCalculatorModuleLayout } from "../sfs/sfs-calculator-module-layout";
 
@@ -90,6 +91,16 @@ export function resolveModuleLayout({
           sections={sections}
           isAdmin={isAdmin}
           primarySectionKey={moduleEntry.primarySectionKey}
+        />
+      );
+
+    case "narrative_premium":
+      // Premium full-width strategic bento layout for narrative modules
+      return (
+        <NarrativePremiumLayout
+          title={title}
+          description={description}
+          sections={sections}
         />
       );
 

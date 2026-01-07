@@ -4,7 +4,12 @@
  */
 
 /** Layout type for module pages */
-export type ModuleLayoutType = "narrative" | "calculator" | "pdf" | "full_bleed_single_section";
+export type ModuleLayoutType =
+  | "narrative"
+  | "narrative_premium"
+  | "calculator"
+  | "pdf"
+  | "full_bleed_single_section";
 
 /** Known module slugs (for type safety) */
 export type ModuleSlug =
@@ -52,14 +57,14 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     slug: "big-and-bulky",
     name: "Big and Bulky",
     description: "Oversized, high-touch delivery flows and network design.",
-    layout: "narrative",
+    layout: "narrative_premium",
     navIconKey: "stack",
   },
   {
     slug: "sfs",
     name: "SFS",
     description: "Ship-from-store fulfillment and inventory-aware routing.",
-    layout: "narrative",
+    layout: "narrative_premium",
     navIconKey: "stack",
   },
   {
@@ -87,28 +92,28 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     slug: "middle-mile-to-spokes",
     name: "Middle Mile to Spokes",
     description: "Linehaul movement from hubs to spoke facilities.",
-    layout: "narrative",
+    layout: "narrative_premium",
     navIconKey: "stack",
   },
   {
     slug: "first-mile-to-hubs-or-spokes",
     name: "First Mile to Hubs/Spokes",
     description: "Initial pickup and injection into hub/spoke network.",
-    layout: "narrative",
+    layout: "narrative_premium",
     navIconKey: "stack",
   },
   {
     slug: "returns",
     name: "Returns",
     description: "Reverse logistics processes and return-to-origin flows.",
-    layout: "narrative",
+    layout: "narrative_premium",
     navIconKey: "stack",
   },
   {
     slug: "store-replenishments",
     name: "Store Replenishments",
     description: "Scheduled restocking from distribution centers to stores.",
-    layout: "narrative",
+    layout: "narrative_premium",
     navIconKey: "stack",
   },
   {
