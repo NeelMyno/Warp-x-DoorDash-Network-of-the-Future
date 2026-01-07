@@ -4,20 +4,20 @@ import * as React from "react";
 import { ChevronDown, Search, Check, AlertTriangle, X, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  SFS_TOP_10_LOCATIONS,
-  SFS_ALL_62_LOCATIONS,
-  searchLocations,
-  findLocationById,
-  normalizeString,
-  getDisplayLabel,
-  type CrossdockLocation,
+  SFS_TOP_MARKETS,
+  SFS_US_MARKETS,
+  searchMarkets,
+  normalizeMarket,
+  isTopMarket,
+  isKnownMarket,
+  NON_TOP_MARKET_BASE_SURCHARGE,
 } from "@/lib/sfs-calculator/markets";
 
 interface MarketComboboxProps {
-  /** Location ID (stored value) */
+  /** Market name (stored value) */
   value: string;
-  /** Called with location ID when selection changes */
-  onChange: (locationId: string) => void;
+  /** Called with market name when selection changes */
+  onChange: (marketName: string) => void;
   invalid?: boolean;
   disabled?: boolean;
 }
@@ -30,38 +30,40 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
   const listRef = React.useRef<HTMLDivElement>(null);
   const [highlightIndex, setHighlightIndex] = React.useState(-1);
 
-  const normalizedQuery = normalizeString(query);
+  const normalizedQuery = normalizeMarket(query);
 
-  // Resolve selected location from ID
-  const selectedLocation = React.useMemo(() => findLocationById(value), [value]);
+  // Check if selected value is a known market
+  const isUnknownMarket = value && !isKnownMarket(value);
+  const isNonTop = value && !isTopMarket(value);
 
-  // Check if value is stale (set but not found in current 62 locations)
-  const isStaleSelection = value && !selectedLocation;
-
-  // Non-top locations
-  const nonTopLocations = React.useMemo(
-    () => SFS_ALL_62_LOCATIONS.filter((loc) => !loc.isTop10),
+  // Non-top markets for "All Markets" section
+  const nonTopMarkets = React.useMemo(
+    () => SFS_US_MARKETS.filter((m) => !isTopMarket(m)),
     []
   );
 
-  // Filter locations by query
-  const filteredTopLocations = React.useMemo(() => {
-    if (!normalizedQuery) return [...SFS_TOP_10_LOCATIONS];
-    return searchLocations(query).filter((loc) => loc.isTop10);
+  // Filter markets by query
+  const filteredTopMarkets = React.useMemo(() => {
+    if (!normalizedQuery) return [...SFS_TOP_MARKETS];
+    return searchMarkets(query).filter((m) => isTopMarket(m));
   }, [normalizedQuery, query]);
 
-  const filteredOtherLocations = React.useMemo(() => {
-    if (!normalizedQuery) return nonTopLocations;
-    return searchLocations(query).filter((loc) => !loc.isTop10);
-  }, [normalizedQuery, nonTopLocations, query]);
+  const filteredOtherMarkets = React.useMemo(() => {
+    if (!normalizedQuery) return nonTopMarkets;
+    return searchMarkets(query).filter((m) => !isTopMarket(m));
+  }, [normalizedQuery, nonTopMarkets, query]);
 
-  // Combined list for keyboard navigation (IDs)
+  // Combined list for keyboard navigation
   const allOptions = React.useMemo(() => {
-    const opts: CrossdockLocation[] = [];
-    for (const loc of filteredTopLocations) opts.push(loc);
-    for (const loc of filteredOtherLocations) opts.push(loc);
+    const opts: string[] = [];
+    for (const m of filteredTopMarkets) opts.push(m);
+    for (const m of filteredOtherMarkets) opts.push(m);
+    // Include "Use custom" option if query doesn't match any market
+    if (normalizedQuery && filteredTopMarkets.length === 0 && filteredOtherMarkets.length === 0) {
+      opts.push(query.trim());
+    }
     return opts;
-  }, [filteredTopLocations, filteredOtherLocations]);
+  }, [filteredTopMarkets, filteredOtherMarkets, normalizedQuery, query]);
 
   // Handle outside click
   React.useEffect(() => {
@@ -106,9 +108,9 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
       case "Enter":
         e.preventDefault();
         if (highlightIndex >= 0 && allOptions[highlightIndex]) {
-          selectLocation(allOptions[highlightIndex].id);
+          selectMarket(allOptions[highlightIndex]);
         } else if (allOptions.length > 0) {
-          selectLocation(allOptions[0].id);
+          selectMarket(allOptions[0]);
         }
         break;
       case "Escape":
@@ -119,8 +121,8 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
     }
   };
 
-  const selectLocation = (locationId: string) => {
-    onChange(locationId);
+  const selectMarket = (marketName: string) => {
+    onChange(marketName);
     setOpen(false);
     setQuery("");
   };
@@ -135,35 +137,33 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
 
   return (
     <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
-      {/* Trigger button - matches Vehicle type dropdown styling */}
+      {/* Trigger button */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={selectedLocation ? `Market: ${getDisplayLabel(selectedLocation)}` : "Select crossdock location"}
+        aria-label={value ? `Market: ${value}` : "Select market"}
         className={cn(
           "flex h-10 w-full items-center justify-between rounded-lg border bg-background/50 px-3 py-2 text-sm",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          invalid || isStaleSelection
+          invalid || isUnknownMarket
             ? "border-[var(--warp-field-error)] focus-visible:ring-[var(--warp-focus-ring-danger)]"
             : "border-border/60 focus-visible:ring-[var(--warp-focus-ring)]",
-          !selectedLocation && "text-muted-foreground"
+          !value && "text-muted-foreground"
         )}
       >
-        <span className="truncate">
-          {selectedLocation ? getDisplayLabel(selectedLocation) : "Select market"}
-        </span>
+        <span className="truncate">{value || "Select market"}</span>
         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
 
-      {/* Stale selection warning */}
-      {isStaleSelection && (
+      {/* Unknown market warning */}
+      {isUnknownMarket && (
         <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
           <AlertTriangle className="h-3 w-3" />
-          <span>Previously selected market is no longer available. Please choose a crossdock location.</span>
+          <span>Unknown market. Consider selecting from the list.</span>
         </div>
       )}
 
@@ -173,19 +173,19 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
       {open && (
         <div
           role="dialog"
-          aria-label="Select crossdock location"
+          aria-label="Select market"
           className={cn(
-            "absolute left-0 top-full z-50 mt-1 w-full min-w-[380px] overflow-hidden rounded-xl",
+            "absolute left-0 top-full z-50 mt-1 w-full min-w-[340px] overflow-hidden rounded-xl",
             "border border-border bg-popover shadow-[var(--shadow-elev-2)]"
           )}
         >
-          {/* Header with title */}
+          {/* Header */}
           <div className="border-b border-border/50 px-3 py-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold">Select crossdock location</h3>
+                <h3 className="text-sm font-semibold">Select market</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  Choose from 62 locations. Top 10 are quick picks.
+                  Top 10 markets have no surcharge. Others add +${NON_TOP_MARKET_BASE_SURCHARGE}.
                 </p>
               </div>
               <button
@@ -214,7 +214,7 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
                   setQuery(e.target.value);
                   setHighlightIndex(-1);
                 }}
-                placeholder="Search by airport code, city, or state..."
+                placeholder="Search markets..."
                 className={cn(
                   "h-9 w-full rounded-lg border border-border/50 bg-background/50 pl-9 pr-3 text-sm",
                   "placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[var(--warp-focus-ring)]"
@@ -223,30 +223,29 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
             </div>
           </div>
 
-          {/* Location list */}
+          {/* Market list */}
           <div ref={listRef} className="max-h-[340px] overflow-y-auto p-1" role="listbox">
             {/* Quick-pick Top 10 as pills (only when not searching) */}
             {!normalizedQuery && (
               <div className="mb-2 p-2">
                 <div className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Quick Pick — Top 10 Crossdocks
+                  Quick Pick — Top 10 Markets
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {SFS_TOP_10_LOCATIONS.map((loc) => (
+                  {SFS_TOP_MARKETS.map((market) => (
                     <button
-                      key={loc.id}
+                      key={market}
                       type="button"
-                      onClick={() => selectLocation(loc.id)}
-                      title={`${loc.city}, ${loc.state}`}
+                      onClick={() => selectMarket(market)}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors",
-                        value === loc.id
+                        value === market
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted/60 text-foreground hover:bg-muted"
                       )}
                     >
-                      <span>{loc.city}</span>
-                      {value === loc.id && <Check className="h-3 w-3" />}
+                      <span>{market}</span>
+                      {value === market && <Check className="h-3 w-3" />}
                     </button>
                   ))}
                 </div>
@@ -254,64 +253,68 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
             )}
 
             {/* Filtered Top 10 (when searching) */}
-            {normalizedQuery && filteredTopLocations.length > 0 && (
+            {normalizedQuery && filteredTopMarkets.length > 0 && (
               <div className="mb-1">
                 <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Top 10 Crossdocks
+                  Top 10 Markets
                 </div>
-                {filteredTopLocations.map((loc, idx) => (
-                  <LocationListItem
-                    key={loc.id}
-                    location={loc}
-                    isSelected={value === loc.id}
+                {filteredTopMarkets.map((market, idx) => (
+                  <MarketListItem
+                    key={market}
+                    market={market}
+                    isSelected={value === market}
                     isHighlighted={highlightIndex === idx}
+                    isTop={true}
                     dataIndex={idx}
-                    onClick={() => selectLocation(loc.id)}
+                    onClick={() => selectMarket(market)}
                   />
                 ))}
               </div>
             )}
 
-            {/* Other locations list */}
-            {(normalizedQuery ? filteredOtherLocations.length > 0 : true) && (
+            {/* Other markets list */}
+            {(normalizedQuery ? filteredOtherMarkets.length > 0 : true) && (
               <div>
                 <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {normalizedQuery ? "All Crossdocks" : "Browse All 62 Crossdocks"}
+                  {normalizedQuery ? "All Markets" : "Browse All Markets"}
                 </div>
-                {(normalizedQuery ? filteredOtherLocations : nonTopLocations).map((loc, idx) => {
-                  const globalIdx = filteredTopLocations.length + idx;
+                {(normalizedQuery ? filteredOtherMarkets : nonTopMarkets).map((market, idx) => {
+                  const globalIdx = filteredTopMarkets.length + idx;
                   return (
-                    <LocationListItem
-                      key={loc.id}
-                      location={loc}
-                      isSelected={value === loc.id}
+                    <MarketListItem
+                      key={market}
+                      market={market}
+                      isSelected={value === market}
                       isHighlighted={highlightIndex === globalIdx}
+                      isTop={false}
                       dataIndex={globalIdx}
-                      onClick={() => selectLocation(loc.id)}
+                      onClick={() => selectMarket(market)}
                     />
                   );
                 })}
               </div>
             )}
 
-            {/* No results - enhanced empty state */}
-            {normalizedQuery && filteredTopLocations.length === 0 && filteredOtherLocations.length === 0 && (
-              <div className="px-3 py-6 text-center">
+            {/* No results - offer to use custom market name */}
+            {normalizedQuery && filteredTopMarkets.length === 0 && filteredOtherMarkets.length === 0 && (
+              <div className="px-3 py-4 text-center">
                 <MapPin className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
-                <p className="text-sm font-medium text-foreground">No crossdock found</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Try searching by airport code (e.g., ATL) or ZIP.
+                <p className="text-sm font-medium text-foreground">No market found</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-3">
+                  You can still use a custom market name.
                 </p>
                 <button
                   type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setHighlightIndex(-1);
-                    inputRef.current?.focus();
-                  }}
-                  className="mt-3 text-xs font-medium text-primary hover:underline"
+                  onClick={() => selectMarket(query.trim())}
+                  className={cn(
+                    "w-full rounded-lg border border-border/50 px-3 py-2 text-left text-sm",
+                    "hover:bg-muted/50 transition-colors",
+                    highlightIndex === 0 && "bg-muted"
+                  )}
                 >
-                  Clear search
+                  <span className="text-muted-foreground">Use:</span>{" "}
+                  <span className="font-medium">&quot;{query.trim()}&quot;</span>
+                  <span className="ml-2 text-[10px] text-amber-500">+${NON_TOP_MARKET_BASE_SURCHARGE}</span>
                 </button>
               </div>
             )}
@@ -323,28 +326,26 @@ export function MarketCombobox({ value, onChange, invalid, disabled }: MarketCom
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LocationListItem subcomponent
+// MarketListItem subcomponent
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface LocationListItemProps {
-  location: CrossdockLocation;
+interface MarketListItemProps {
+  market: string;
   isSelected: boolean;
   isHighlighted: boolean;
+  isTop: boolean;
   dataIndex: number;
   onClick: () => void;
 }
 
-function LocationListItem({
-  location,
+function MarketListItem({
+  market,
   isSelected,
   isHighlighted,
+  isTop,
   dataIndex,
   onClick,
-}: LocationListItemProps) {
-  // Extract site suffix if present (e.g., "(Site A)")
-  const siteSuffixMatch = location.label.match(/\(Site [A-Z]\)$/);
-  const siteSuffix = siteSuffixMatch ? siteSuffixMatch[0] : null;
-
+}: MarketListItemProps) {
   return (
     <button
       type="button"
@@ -360,17 +361,10 @@ function LocationListItem({
       )}
     >
       <div className="flex-1 min-w-0">
-        {/* Primary: Airport — City, State + site suffix */}
-        <div className="text-sm font-medium truncate">
-          {getDisplayLabel(location)}
-          {siteSuffix && (
-            <span className="ml-1 text-muted-foreground font-normal">{siteSuffix}</span>
-          )}
-        </div>
+        <div className="text-sm font-medium truncate">{market}</div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Badge: Top 10 only */}
-        {location.isTop10 && (
+        {isTop && (
           <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
             Top 10
           </span>

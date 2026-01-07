@@ -34,7 +34,7 @@ export interface SegmentGradient {
 // Premium Gradient Palette
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** 
+/**
  * Sophisticated gradient palette with muted, professional colors.
  * These are ordered for visual harmony when displayed side-by-side.
  */
@@ -82,7 +82,7 @@ function hashKey(key: string): number {
  */
 export function normalizeMetrics(metrics: MetricsFlowItem[]): NormalizedMetricsResult {
   let invalidCount = 0;
-  
+
   const normalized = metrics
     .filter((m): m is MetricsFlowItem => {
       if (!m || typeof m.key !== "string" || !m.key.trim()) {
@@ -136,16 +136,16 @@ export function computeRoundedPercents(
   // Calculate raw percentages
   const rawPercents = metrics.map((m) => (m.value / total) * 100);
   const floored = rawPercents.map(Math.floor);
-  
+
   // Build remainder list for distribution
-  const remainders = rawPercents.map((p, i) => ({ 
-    index: i, 
-    remainder: p - floored[i] 
+  const remainders = rawPercents.map((p, i) => ({
+    index: i,
+    remainder: p - floored[i]
   }));
-  
+
   // Sort by largest remainder descending
   remainders.sort((a, b) => b.remainder - a.remainder);
-  
+
   // Distribute remaining points to reach 100
   let remaining = 100 - floored.reduce((a, b) => a + b, 0);
   for (const { index } of remainders) {

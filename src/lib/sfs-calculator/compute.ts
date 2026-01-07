@@ -21,7 +21,7 @@ import {
   tierForDistance,
   validateDensityTiers,
 } from "./density";
-import { isTop10Location, NON_TOP_MARKET_BASE_SURCHARGE, findLocationById, getDefaultMarketId } from "./markets";
+import { isTopMarket, NON_TOP_MARKET_BASE_SURCHARGE, getDefaultMarket } from "./markets";
 
 /**
  * Vehicle cubic capacities (cubic inches) per PDF.
@@ -73,12 +73,11 @@ export function computeSfsEconomics(
     densityTiers?: SfsDensityTier[];
   },
 ): SfsAnchorResult[] {
-  // Validate market ID and determine surcharge
-  // If market ID is missing or invalid, default to first Top 10 location
-  const marketId = inputs.market || getDefaultMarketId();
-  const location = findLocationById(marketId);
-  // Apply +$30 base surcharge for non-top-10 locations
-  const marketSurcharge = location && isTop10Location(marketId) ? 0 : NON_TOP_MARKET_BASE_SURCHARGE;
+  // Validate market name and determine surcharge
+  // If market name is missing, default to first Top 10 market
+  const marketName = inputs.market?.trim() ? inputs.market : getDefaultMarket();
+  // Apply +$30 base surcharge for non-top-10 markets
+  const marketSurcharge = isTopMarket(marketName) ? 0 : NON_TOP_MARKET_BASE_SURCHARGE;
   const base_fee = rateCard.base_fee + marketSurcharge;
   const per_mile_rate = rateCard.per_mile_rate;
   const per_stop_rate = rateCard.per_stop_rate;

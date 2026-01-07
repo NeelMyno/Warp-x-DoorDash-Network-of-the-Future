@@ -1,15 +1,17 @@
 /**
- * Unit tests for crossdock location data and helpers.
+ * Unit tests for market data and helpers.
  * Run with: npx tsx src/lib/sfs-calculator/markets.test.ts
  */
 
 import {
-  SFS_ALL_62_LOCATIONS,
-  SFS_TOP_10_LOCATIONS,
-  findLocationById,
-  searchLocations,
-  isTop10Location,
-  getDefaultMarketId,
+  SFS_TOP_MARKETS,
+  SFS_US_MARKETS,
+  isTopMarket,
+  isKnownMarket,
+  normalizeMarket,
+  canonicalizeMarket,
+  getDefaultMarket,
+  searchMarkets,
   NON_TOP_MARKET_BASE_SURCHARGE,
 } from "./markets";
 
@@ -27,129 +29,127 @@ function assert(condition: boolean, message: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Location data tests
+// Market list data tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-assert(SFS_ALL_62_LOCATIONS.length === 62, "Exactly 62 crossdock locations");
-assert(SFS_TOP_10_LOCATIONS.length === 10, "Exactly 10 top locations");
+assert(SFS_TOP_MARKETS.length === 10, "Exactly 10 Top markets");
+assert(SFS_US_MARKETS.length > 100, "More than 100 total US markets");
 
-// Verify all top 10 are in the 62
-const allIds = new Set(SFS_ALL_62_LOCATIONS.map((loc) => loc.id));
-const allTop10InAll = SFS_TOP_10_LOCATIONS.every((loc) => allIds.has(loc.id));
-assert(allTop10InAll, "All Top 10 locations are in the 62");
+// Verify all top 10 are in US markets
+const usMarketsSet = new Set(SFS_US_MARKETS);
+const allTopInUs = SFS_TOP_MARKETS.every((m) => usMarketsSet.has(m));
+assert(allTopInUs, "All Top 10 markets are in US markets list");
 
-// Verify unique IDs
-const uniqueIds = new Set(SFS_ALL_62_LOCATIONS.map((loc) => loc.id));
-assert(uniqueIds.size === 62, "All 62 IDs are unique");
-
-// Verify duplicate labels have suffixes
-const labelsWithSite = SFS_ALL_62_LOCATIONS.filter((loc) => loc.label.includes("(Site"));
-assert(labelsWithSite.length > 0, "Duplicate locations have site suffixes");
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Top 10 verification (specific indices from spec)
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Verify expected Top 10 markets
 const expectedTop10 = [
-  { index: 1, city: "Los Angeles", airportCode: "LAX" },      // LA
-  { index: 7, city: "Tolleson", airportCode: "PHX" },         // Phoenix
-  { index: 18, city: "Houston", airportCode: "IAH" },         // Houston
-  { index: 19, city: "Miami", airportCode: "MIA" },           // Miami
-  { index: 20, city: "Atlanta", airportCode: "ATL" },         // Atlanta
-  { index: 21, city: "Linden", airportCode: "EWR" },          // NYC metro
-  { index: 27, city: "Chicago", airportCode: "ORD" },         // Chicago
-  { index: 28, city: "Grand Prairie", airportCode: "DFW" },   // Dallas
-  { index: 29, city: "Lorton", airportCode: "DCA" },          // DC metro
-  { index: 62, city: "Denver", airportCode: "DEN" },          // Denver
+  "Chicago",
+  "Atlanta",
+  "Dallas",
+  "Denver",
+  "Houston",
+  "Los Angeles",
+  "Miami",
+  "New York",
+  "Phoenix",
+  "Washington DC",
 ];
 
-for (const expected of expectedTop10) {
-  const loc = SFS_ALL_62_LOCATIONS[expected.index - 1];
-  assert(
-    loc?.isTop10 === true,
-    `Index ${expected.index} (${expected.city}) is flagged as Top 10`
-  );
-  assert(
-    loc?.city === expected.city,
-    `Index ${expected.index} city is ${expected.city}`
-  );
-  assert(
-    loc?.airportCode === expected.airportCode,
-    `Index ${expected.index} airport is ${expected.airportCode}`
-  );
+for (const market of expectedTop10) {
+  assert(SFS_TOP_MARKETS.includes(market), `Top 10 includes "${market}"`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper function tests
+// isTopMarket tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-// findLocationById
-const laxLoc = findLocationById("LAX-90001-1");
-assert(laxLoc !== undefined, "findLocationById returns LAX-90001-1");
-assert(laxLoc?.city === "Los Angeles", "LAX location has correct city");
+// Top markets (exact match)
+assert(isTopMarket("Chicago") === true, "Chicago is Top 10");
+assert(isTopMarket("Atlanta") === true, "Atlanta is Top 10");
+assert(isTopMarket("Los Angeles") === true, "Los Angeles is Top 10");
 
-const unknownLoc = findLocationById("UNKNOWN-12345-99");
-assert(unknownLoc === undefined, "findLocationById returns undefined for unknown ID");
+// Top markets (aliases)
+assert(isTopMarket("NYC") === true, "NYC (alias) is Top 10");
+assert(isTopMarket("LA") === true, "LA (alias) is Top 10");
+assert(isTopMarket("DC") === true, "DC (alias) is Top 10");
+assert(isTopMarket("DFW") === true, "DFW (alias for Dallas) is Top 10");
 
-// isTop10Location
-assert(isTop10Location("LAX-90001-1") === true, "LAX-90001-1 is Top 10");
-assert(isTop10Location("ORD-60632-27") === true, "ORD-60632-27 (Chicago) is Top 10");
-assert(isTop10Location("TPA-33619-2") === false, "TPA-33619-2 (Tampa) is NOT Top 10");
-assert(isTop10Location("UNKNOWN") === false, "Unknown ID is NOT Top 10");
+// Non-top markets
+assert(isTopMarket("Cincinnati") === false, "Cincinnati is NOT Top 10");
+assert(isTopMarket("Tampa") === false, "Tampa is NOT Top 10");
+assert(isTopMarket("Seattle") === false, "Seattle is NOT Top 10");
+assert(isTopMarket("San Francisco") === false, "San Francisco is NOT Top 10");
 
-// searchLocations - basic functionality
-const chicagoResults = searchLocations("Chicago");
-assert(chicagoResults.length >= 1, "Search 'Chicago' returns at least 1 result");
-assert(
-  chicagoResults.some((loc) => loc.city === "Chicago"),
-  "Search 'Chicago' includes Chicago location"
-);
+// Unknown markets
+assert(isTopMarket("My Custom City") === false, "Unknown market is NOT Top 10");
+assert(isTopMarket("Nowhere Town") === false, "Unknown market is NOT Top 10");
 
-const ordResults = searchLocations("ORD");
-assert(ordResults.length >= 2, "Search 'ORD' returns at least 2 results");
+// ─────────────────────────────────────────────────────────────────────────────
+// Normalization tests
+// ─────────────────────────────────────────────────────────────────────────────
 
-const zipResults = searchLocations("90001");
-assert(zipResults.length >= 1, "Search by ZIP returns results");
+// Case insensitivity
+assert(isTopMarket("chicago") === true, "lowercase 'chicago' is Top 10");
+assert(isTopMarket("CHICAGO") === true, "uppercase 'CHICAGO' is Top 10");
+assert(isTopMarket("ChIcAgO") === true, "mixed case 'ChIcAgO' is Top 10");
 
-const emptySearch = searchLocations("");
-assert(emptySearch.length === 62, "Empty search returns all 62 locations");
+// Whitespace handling
+assert(isTopMarket(" Chicago ") === true, "' Chicago ' (with spaces) is Top 10");
+assert(isTopMarket("  Chicago  ") === true, "'  Chicago  ' (multiple spaces) is Top 10");
 
-// searchLocations - smart ranking/scoring
-const atlResults = searchLocations("ATL");
-assert(atlResults.length >= 1, "Search 'ATL' returns results");
-assert(atlResults[0].airportCode === "ATL", "Exact airport code match ranks first");
+// normalizeMarket function
+assert(normalizeMarket("  Chicago  ") === "chicago", "normalizeMarket trims and lowercases");
+assert(normalizeMarket("Los Angeles") === "los angeles", "normalizeMarket preserves internal spaces");
+assert(normalizeMarket("Washington, DC") === "washington dc", "normalizeMarket removes commas");
 
-const atResults = searchLocations("AT");
-assert(atResults.length >= 1, "Search 'AT' returns results");
-assert(
-  atResults.some((loc) => loc.airportCode === "ATL"),
-  "Prefix 'AT' includes ATL"
-);
+// ─────────────────────────────────────────────────────────────────────────────
+// isKnownMarket tests
+// ─────────────────────────────────────────────────────────────────────────────
 
-const zip90Results = searchLocations("900");
-assert(zip90Results.length >= 1, "Search '900' (ZIP prefix) returns results");
-assert(
-  zip90Results.some((loc) => loc.zip.startsWith("900")),
-  "ZIP prefix search finds matching ZIPs"
-);
+assert(isKnownMarket("Chicago") === true, "Chicago is known");
+assert(isKnownMarket("Cincinnati") === true, "Cincinnati is known");
+assert(isKnownMarket("Tampa") === true, "Tampa is known");
+assert(isKnownMarket("My Custom City") === false, "Custom city is NOT known");
 
-const westResults = searchLocations("West");
-assert(westResults.length >= 1, "Search 'West' (region) returns results");
-assert(
-  westResults.some((loc) => loc.region === "West"),
-  "Region search includes West region locations"
-);
+// ─────────────────────────────────────────────────────────────────────────────
+// canonicalizeMarket tests
+// ─────────────────────────────────────────────────────────────────────────────
 
-const caseInsensitiveResults = searchLocations("CHICAGO");
-assert(
-  caseInsensitiveResults.length === chicagoResults.length,
-  "Search is case-insensitive"
-);
+assert(canonicalizeMarket("chicago") === "Chicago", "canonicalizes 'chicago' to 'Chicago'");
+assert(canonicalizeMarket("NYC") === "New York", "canonicalizes 'NYC' alias to 'New York'");
+assert(canonicalizeMarket("LA") === "Los Angeles", "canonicalizes 'LA' alias to 'Los Angeles'");
+assert(canonicalizeMarket("Bay Area") === "San Francisco", "canonicalizes 'Bay Area' alias to 'San Francisco'");
+assert(canonicalizeMarket("Unknown Place") === "Unknown Place", "unknown returns trimmed input");
 
-// getDefaultMarketId
-const defaultId = getDefaultMarketId();
-assert(defaultId !== "", "getDefaultMarketId returns a non-empty string");
-assert(isTop10Location(defaultId), "Default market ID is a Top 10 location");
+// ─────────────────────────────────────────────────────────────────────────────
+// searchMarkets tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+const chicagoSearch = searchMarkets("Chicago");
+assert(chicagoSearch.length >= 1, "Search 'Chicago' returns at least 1 result");
+assert(chicagoSearch.includes("Chicago"), "Search 'Chicago' includes Chicago");
+
+const denSearch = searchMarkets("Den");
+assert(denSearch.length >= 1, "Search 'Den' returns results");
+assert(denSearch.includes("Denver"), "Search 'Den' includes Denver");
+
+const emptySearch = searchMarkets("");
+assert(emptySearch.length === SFS_US_MARKETS.length, "Empty search returns all markets");
+
+// Alias search
+const nycSearch = searchMarkets("NYC");
+assert(nycSearch.includes("New York"), "Search 'NYC' includes New York");
+
+const sfSearch = searchMarkets("SF");
+assert(sfSearch.includes("San Francisco"), "Search 'SF' includes San Francisco");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getDefaultMarket tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+const defaultMarket = getDefaultMarket();
+assert(defaultMarket !== "", "getDefaultMarket returns non-empty string");
+assert(isTopMarket(defaultMarket), "Default market is a Top 10 market");
+assert(defaultMarket === "Chicago", "Default market is Chicago");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Surcharge constant

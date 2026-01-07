@@ -9,22 +9,21 @@ import { generateErrorReportCsv, generateMissingDistanceCsv, getAffectedAnchorId
 import { computeSatelliteImpacts } from "../src/lib/sfs-calculator/impact";
 import { generateSalesSummaryText, makeSatelliteResultsCsv } from "../src/lib/sfs-calculator/format";
 import {
-  isTop10Location,
+  isTopMarket,
   NON_TOP_MARKET_BASE_SURCHARGE,
-  findLocationById,
-  getDefaultMarketId,
-  SFS_TOP_10_LOCATIONS,
-  SFS_ALL_62_LOCATIONS,
+  getDefaultMarket,
+  SFS_TOP_MARKETS,
+  SFS_US_MARKETS,
 } from "../src/lib/sfs-calculator/markets";
 
-// Use Chicago's crossdock ID as default (Top 10 location)
-const CHICAGO_MARKET_ID = "ORD-60632-27";
-// Use Tampa as a non-Top 10 location for testing
-const TAMPA_MARKET_ID = "TPA-33619-2";
+// Use Chicago as default (Top 10 market)
+const CHICAGO_MARKET = "Chicago";
+// Use Tampa as a non-Top 10 market for testing
+const TAMPA_MARKET = "Tampa";
 
 function makeInputs(partial?: Partial<SfsCalculatorInputs>): SfsCalculatorInputs {
   return {
-    market: CHICAGO_MARKET_ID,
+    market: CHICAGO_MARKET,
     vehicle_type: "Cargo Van",
     miles_to_hub_or_spoke: 10,
     avg_routing_time_per_stop_minutes: 5,
@@ -382,13 +381,13 @@ test("computeSfsEconomics: adds $30 to base fee for non-top-10 locations", () =>
     }),
   ];
 
-  // Top 10 location (Chicago) - no surcharge
-  const topInputs = makeInputs({ market: CHICAGO_MARKET_ID, miles_to_hub_or_spoke: 10 });
+  // Top 10 market (Chicago) - no surcharge
+  const topInputs = makeInputs({ market: CHICAGO_MARKET, miles_to_hub_or_spoke: 10 });
   const [topResult] = computeSfsEconomics(topInputs, stops, cargoVanRate);
   assert.ok(topResult);
 
-  // Non-top-10 location (Tampa) - +$30 surcharge
-  const nonTopInputs = makeInputs({ market: TAMPA_MARKET_ID, miles_to_hub_or_spoke: 10 });
+  // Non-top-10 market (Tampa) - +$30 surcharge
+  const nonTopInputs = makeInputs({ market: TAMPA_MARKET, miles_to_hub_or_spoke: 10 });
   const [nonTopResult] = computeSfsEconomics(nonTopInputs, stops, cargoVanRate);
   assert.ok(nonTopResult);
 
@@ -412,7 +411,7 @@ test("computeSfsEconomics: adds $30 to base fee for non-top-10 locations", () =>
   assert.equal(nonTopResult.base_portion_after_density, 133);
 });
 
-test("computeSfsEconomics: unknown market ID gets surcharge, empty defaults to top-10", () => {
+test("computeSfsEconomics: unknown market gets surcharge, empty defaults to top-10", () => {
   const stops: SfsStop[] = [
     makeStop({
       anchor_id: "A-TEST-01",
@@ -422,80 +421,67 @@ test("computeSfsEconomics: unknown market ID gets surcharge, empty defaults to t
     }),
   ];
 
-  // Unknown market ID - gets surcharge (not in Top 10)
-  const [r1] = computeSfsEconomics(makeInputs({ market: "UNKNOWN-12345-99" }), stops, cargoVanRate);
-  // Empty market - defaults to first Top 10 location (no surcharge)
+  // Unknown market name - gets surcharge (not in Top 10)
+  const [r1] = computeSfsEconomics(makeInputs({ market: "My Custom City" }), stops, cargoVanRate);
+  // Empty market - defaults to first Top 10 market (no surcharge)
   const [r2] = computeSfsEconomics(makeInputs({ market: "" }), stops, cargoVanRate);
 
   assert.ok(r1 && r2);
-  // Unknown ID gets surcharge: 95 + 30 + 1.5*10 = 140
+  // Unknown market gets surcharge: 95 + 30 + 1.5*10 = 140
   assert.equal(r1.base_portion_before_density, 140);
   // Empty defaults to Top 10: 95 + 1.5*10 = 110 (no surcharge)
   assert.equal(r2.base_portion_before_density, 110);
 });
 
-test("isTop10Location: correctly identifies top-10 and non-top-10 locations", () => {
-  // Top 10 locations should return true
-  assert.equal(isTop10Location(CHICAGO_MARKET_ID), true);
-  assert.equal(isTop10Location("LAX-90001-1"), true); // Los Angeles
-  assert.equal(isTop10Location("EWR-07036-21"), true); // NYC metro (Linden)
-  assert.equal(isTop10Location("DCA-22079-29"), true); // DC metro (Lorton)
+test("isTopMarket: correctly identifies top-10 and non-top-10 markets", () => {
+  // Top 10 markets should return true
+  assert.equal(isTopMarket(CHICAGO_MARKET), true);
+  assert.equal(isTopMarket("Los Angeles"), true);
+  assert.equal(isTopMarket("New York"), true);
+  assert.equal(isTopMarket("Washington DC"), true);
 
-  // Non-top-10 locations should return false
-  assert.equal(isTop10Location(TAMPA_MARKET_ID), false);
-  assert.equal(isTop10Location("SFO-94080-3"), false); // San Francisco
-  assert.equal(isTop10Location("BOS-02150-4"), false); // Boston
+  // Aliases should also work
+  assert.equal(isTopMarket("NYC"), true);
+  assert.equal(isTopMarket("LA"), true);
+  assert.equal(isTopMarket("DC"), true);
 
-  // Unknown IDs should return false
-  assert.equal(isTop10Location("UNKNOWN-12345-99"), false);
-  assert.equal(isTop10Location(""), false);
+  // Non-top-10 markets should return false
+  assert.equal(isTopMarket(TAMPA_MARKET), false);
+  assert.equal(isTopMarket("San Francisco"), false);
+  assert.equal(isTopMarket("Boston"), false);
+
+  // Unknown markets should return false
+  assert.equal(isTopMarket("My Custom City"), false);
+  assert.equal(isTopMarket(""), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Location lookup tests
+// Market lookup tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("findLocationById: returns location for valid ID", () => {
-  const chicago = findLocationById(CHICAGO_MARKET_ID);
-  assert.ok(chicago);
-  assert.equal(chicago.city, "Chicago");
-  assert.equal(chicago.airportCode, "ORD");
-  assert.equal(chicago.isTop10, true);
-
-  const tampa = findLocationById(TAMPA_MARKET_ID);
-  assert.ok(tampa);
-  assert.equal(tampa.city, "Tampa");
-  assert.equal(tampa.airportCode, "TPA");
-  assert.equal(tampa.isTop10, false);
+test("getDefaultMarket: returns a Top 10 market name", () => {
+  const defaultMarket = getDefaultMarket();
+  assert.ok(defaultMarket);
+  assert.equal(isTopMarket(defaultMarket), true);
+  assert.equal(defaultMarket, "Chicago");
 });
 
-test("findLocationById: returns undefined for unknown ID", () => {
-  assert.equal(findLocationById("UNKNOWN-12345-99"), undefined);
-  assert.equal(findLocationById(""), undefined);
-});
-
-test("getDefaultMarketId: returns a Top 10 location ID", () => {
-  const defaultId = getDefaultMarketId();
-  assert.ok(defaultId);
-  assert.equal(isTop10Location(defaultId), true);
-});
-
-test("SFS_TOP_10_LOCATIONS: contains exactly 10 locations", () => {
-  assert.equal(SFS_TOP_10_LOCATIONS.length, 10);
-  // All should be flagged as isTop10
-  for (const loc of SFS_TOP_10_LOCATIONS) {
-    assert.equal(loc.isTop10, true);
+test("SFS_TOP_MARKETS: contains exactly 10 markets", () => {
+  assert.equal(SFS_TOP_MARKETS.length, 10);
+  // All should be recognized as top markets
+  for (const market of SFS_TOP_MARKETS) {
+    assert.equal(isTopMarket(market), true);
   }
 });
 
-test("SFS_ALL_62_LOCATIONS: contains exactly 62 locations", () => {
-  assert.equal(SFS_ALL_62_LOCATIONS.length, 62);
-  // All IDs should be unique
-  const ids = new Set(SFS_ALL_62_LOCATIONS.map((loc) => loc.id));
-  assert.equal(ids.size, 62);
+test("SFS_US_MARKETS: contains many markets", () => {
+  assert.ok(SFS_US_MARKETS.length > 100);
+  // All markets should be unique
+  const uniqueMarkets = new Set(SFS_US_MARKETS);
+  assert.equal(uniqueMarkets.size, SFS_US_MARKETS.length);
 });
 
-test("computeSfsEconomics: all Top 10 locations have no surcharge", () => {
+test("computeSfsEconomics: all Top 10 markets have no surcharge", () => {
   const stops: SfsStop[] = [
     makeStop({
       anchor_id: "A-TEST-01",
@@ -505,14 +491,14 @@ test("computeSfsEconomics: all Top 10 locations have no surcharge", () => {
     }),
   ];
 
-  // Test all Top 10 locations have no surcharge
-  for (const loc of SFS_TOP_10_LOCATIONS) {
-    const [result] = computeSfsEconomics(makeInputs({ market: loc.id }), stops, cargoVanRate);
-    assert.ok(result, `Result should exist for ${loc.label}`);
+  // Test all Top 10 markets have no surcharge
+  for (const market of SFS_TOP_MARKETS) {
+    const [result] = computeSfsEconomics(makeInputs({ market }), stops, cargoVanRate);
+    assert.ok(result, `Result should exist for ${market}`);
     assert.equal(
       result.base_portion_before_density,
       110, // 95 + 1.5*10 = 110, no $30 surcharge
-      `${loc.label} (${loc.id}) should have no surcharge`,
+      `${market} should have no surcharge`,
     );
   }
 });

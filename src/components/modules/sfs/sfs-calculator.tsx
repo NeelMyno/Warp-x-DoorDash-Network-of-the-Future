@@ -31,7 +31,7 @@ import type {
   SfsStop,
   VehicleType,
 } from "@/lib/sfs-calculator/types";
-import { DEFAULT_INPUTS, getDefaultMarketId } from "@/lib/sfs-calculator/types";
+import { DEFAULT_INPUTS, getDefaultMarket } from "@/lib/sfs-calculator/types";
 import type { SfsRateCardsErrorReason } from "@/lib/sfs-calculator/get-rate-cards";
 import { validateSfsInputs } from "@/lib/sfs-calculator/validate";
 import {
@@ -86,7 +86,7 @@ function getInitialInputs(): SfsCalculatorInputs {
   const defaultVehicle: VehicleType = "Cargo Van";
   return {
     ...DEFAULT_INPUTS,
-    market: getDefaultMarketId(),
+    market: getDefaultMarket(),
     vehicle_type: defaultVehicle,
   };
 }
