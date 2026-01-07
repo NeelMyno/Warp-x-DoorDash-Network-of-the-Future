@@ -115,62 +115,59 @@ const VisionPanel = React.forwardRef<
       id={id}
       aria-label={title}
       className={cn(
-        // Outer root: overflow-hidden ensures all FX are clipped to rounded shape
-        "group relative flex h-full flex-col overflow-hidden rounded-xl",
-        "border border-border/35",
-        "bg-gradient-to-br from-card/40 via-card/30 to-card/20",
-        "backdrop-blur-sm",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.025)]",
+        // Outer root: overflow-hidden + isolate ensures all FX are clipped
+        "group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        "border border-border/30",
+        "bg-gradient-to-br from-card/35 via-card/25 to-card/15",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
         "scroll-mt-20",
         "transition-all duration-200 ease-out",
-        "hover:border-border/50 hover:from-card/45 hover:via-card/35 hover:to-card/25",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_20px_-10px_rgba(0,255,51,0.06)]",
+        "hover:border-border/45 hover:from-card/40 hover:via-card/30 hover:to-card/20",
+        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
         className
       )}
       style={{ animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped by parent overflow-hidden) ══ */}
+      {/* ══ FX Layer (clipped by overflow-hidden, no blur/filter) ══ */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-[inherit]"
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
         aria-hidden="true"
       >
-        {/* Left accent rail - inside bounds */}
+        {/* Left accent rail - subtle gradient inside bounds */}
         <div
-          className="absolute bottom-0 left-0 top-0 w-[2px]"
+          className="absolute bottom-0 left-0 top-0 w-px"
           style={{
             background:
-              "linear-gradient(180deg, rgba(0,255,51,0.28) 0%, rgba(0,255,51,0.10) 70%, transparent 100%)",
+              "linear-gradient(180deg, rgba(0,255,51,0.22) 0%, rgba(0,255,51,0.08) 60%, transparent 100%)",
           }}
         />
-        {/* Corner glow - positioned inside panel, uses blur for soft edge */}
+        {/* Corner glow - NO blur, uses large soft radial gradient instead */}
         <div
-          className="absolute left-0 top-0 h-28 w-28 opacity-[0.06] blur-2xl"
+          className="absolute left-0 top-0 h-32 w-32"
           style={{
             background:
-              "radial-gradient(circle at 0% 0%, rgba(0,255,51,0.5) 0%, transparent 70%)",
+              "radial-gradient(ellipse 100% 100% at 0% 0%, rgba(0,255,51,0.04) 0%, rgba(0,255,51,0.02) 40%, transparent 70%)",
           }}
         />
       </div>
 
       {/* ══ Content Layer ══ */}
       <div className="relative z-10 flex flex-1 flex-col p-5 lg:p-6">
-        {/* Compact label header */}
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
               "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
-              "bg-primary/6 text-primary/60",
-              "transition-colors duration-200 group-hover:bg-primary/10 group-hover:text-primary/80"
+              "bg-primary/5 text-primary/55",
+              "transition-colors duration-200 group-hover:bg-primary/8 group-hover:text-primary/75"
             )}
           >
             {icon}
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/55">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/50">
             {subtitle}
           </span>
         </div>
-        {/* Main content with readability max-width */}
         <div className="module-content narrative-premium-content narrative-premium-vision flex-1">
           {isEmpty ? (
             <EmptyStateVision text={emptyText} />
@@ -208,31 +205,31 @@ const ProgressPanel = React.forwardRef<
       ref={ref}
       id={id}
       className={cn(
-        // Outer root: overflow-hidden ensures all FX are clipped
-        "group relative flex h-full flex-col overflow-hidden rounded-xl",
-        "border border-border/35",
-        "bg-card/25 backdrop-blur-sm",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]",
+        // Outer root: overflow-hidden + isolate ensures all FX are clipped
+        "group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        "border border-border/30",
+        "bg-card/20",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.015)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
         "scroll-mt-20",
         "transition-all duration-200 ease-out",
-        "hover:border-border/45 hover:bg-card/32",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_0_16px_-8px_rgba(0,255,51,0.04)]",
+        "hover:border-border/40 hover:bg-card/28",
+        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.025)]",
         className
       )}
       style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped by parent overflow-hidden) ══ */}
+      {/* ══ FX Layer (clipped, no blur/filter) ══ */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-[inherit]"
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
         aria-hidden="true"
       >
-        {/* Top accent line */}
+        {/* Top accent line - subtle */}
         <div
           className="absolute left-0 right-0 top-0 h-px"
           style={{
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.15) 30%, rgba(0,255,51,0.18) 50%, rgba(0,255,51,0.15) 70%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.10) 30%, rgba(0,255,51,0.14) 50%, rgba(0,255,51,0.10) 70%, transparent 100%)",
           }}
         />
       </div>
@@ -243,17 +240,17 @@ const ProgressPanel = React.forwardRef<
           <div
             className={cn(
               "flex h-5 w-5 shrink-0 items-center justify-center rounded",
-              "bg-primary/5 text-primary/45",
-              "transition-colors duration-200 group-hover:bg-primary/8 group-hover:text-primary/65"
+              "bg-primary/4 text-primary/40",
+              "transition-colors duration-200 group-hover:bg-primary/6 group-hover:text-primary/60"
             )}
           >
             {icon}
           </div>
           <div>
-            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/80">
+            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
               {title}
             </h2>
-            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/40">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/35">
               {subtitle}
             </p>
           </div>
@@ -291,31 +288,31 @@ const RoadmapPanel = React.forwardRef<
       ref={ref}
       id={id}
       className={cn(
-        // Outer root: overflow-hidden ensures all FX are clipped
-        "group relative flex h-full flex-col overflow-hidden rounded-xl",
-        "border border-border/35",
-        "bg-card/25 backdrop-blur-sm",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]",
+        // Outer root: overflow-hidden + isolate ensures all FX are clipped
+        "group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        "border border-border/30",
+        "bg-card/20",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.015)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
         "scroll-mt-20",
         "transition-all duration-200 ease-out",
-        "hover:border-border/45 hover:bg-card/32",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_0_16px_-8px_rgba(0,255,51,0.04)]",
+        "hover:border-border/40 hover:bg-card/28",
+        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.025)]",
         className
       )}
       style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped by parent overflow-hidden) ══ */}
+      {/* ══ FX Layer (clipped, no blur/filter) ══ */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-[inherit]"
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
         aria-hidden="true"
       >
-        {/* Left accent rail */}
+        {/* Left accent rail - subtle */}
         <div
           className="absolute bottom-0 left-0 top-0 w-px"
           style={{
             background:
-              "linear-gradient(180deg, rgba(0,255,51,0.16) 0%, rgba(0,255,51,0.06) 70%, transparent 100%)",
+              "linear-gradient(180deg, rgba(0,255,51,0.12) 0%, rgba(0,255,51,0.04) 70%, transparent 100%)",
           }}
         />
       </div>
@@ -326,17 +323,17 @@ const RoadmapPanel = React.forwardRef<
           <div
             className={cn(
               "flex h-5 w-5 shrink-0 items-center justify-center rounded",
-              "bg-primary/5 text-primary/45",
-              "transition-colors duration-200 group-hover:bg-primary/8 group-hover:text-primary/65"
+              "bg-primary/4 text-primary/40",
+              "transition-colors duration-200 group-hover:bg-primary/6 group-hover:text-primary/60"
             )}
           >
             {icon}
           </div>
           <div>
-            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/80">
+            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
               {title}
             </h2>
-            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/40">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/35">
               {subtitle}
             </p>
           </div>
@@ -589,36 +586,27 @@ export function NarrativePremiumLayout({
           CANVAS ZONE - Premium background effects scoped here only
           ═══════════════════════════════════════════════════════════════════════ */}
       <div className="relative isolate pt-1">
-        {/* Subtle top fade-in boundary (visual separator from header) */}
+        {/* Subtle top boundary line */}
         <div
-          className="pointer-events-none absolute -top-px left-0 right-0 h-px"
+          className="pointer-events-none absolute left-0 right-0 top-0 h-px"
           style={{
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 20%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.04) 80%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.03) 75%, transparent 100%)",
           }}
           aria-hidden="true"
         />
 
-        {/* Premium canvas background - absolutely positioned, z-0 */}
+        {/* Canvas background - no negative offsets, no blur filters */}
         <div
           className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
           aria-hidden="true"
         >
-          {/* Soft depth wash - fades toward edges */}
+          {/* Subtle depth wash - very soft */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 80% 60% at 30% 40%, rgba(0,0,0,0.08) 0%, transparent 55%)",
-            }}
-          />
-          {/* Accent glow - very subtle, respects reduced motion */}
-          <div
-            className="absolute -left-20 -top-20 h-40 w-40 opacity-[0.05] motion-safe:animate-pulse"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(0,255,51,0.3) 0%, transparent 65%)",
-              animationDuration: "12s",
+                "radial-gradient(ellipse 70% 50% at 35% 35%, rgba(0,0,0,0.05) 0%, transparent 50%)",
             }}
           />
         </div>
