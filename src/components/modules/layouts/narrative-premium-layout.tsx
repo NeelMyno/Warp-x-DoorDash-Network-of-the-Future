@@ -116,59 +116,59 @@ const VisionPanel = React.forwardRef<
       aria-label={title}
       className={cn(
         "group relative flex h-full flex-col overflow-hidden rounded-2xl",
-        "border border-border/50",
-        "bg-gradient-to-br from-card/50 via-card/40 to-card/30",
+        "border border-border/40",
+        "bg-gradient-to-br from-card/45 via-card/35 to-card/25",
         "backdrop-blur-sm",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
-        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-3",
-        "scroll-mt-[var(--warp-anchor-offset)]",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
+        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2",
+        "scroll-mt-24",
         "transition-all duration-300 ease-out",
-        "hover:border-border/70 hover:bg-card/45",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_0_32px_-10px_rgba(0,255,51,0.12)]",
+        "hover:border-border/55 hover:bg-card/40",
+        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_0_24px_-12px_rgba(0,255,51,0.08)]",
         className
       )}
       style={{ animationFillMode: "backwards" }}
     >
-      {/* Left accent rail */}
+      {/* Left accent rail - refined */}
       <div
-        className="absolute bottom-0 left-0 top-0 w-[3px]"
+        className="absolute bottom-0 left-0 top-0 w-[2px]"
         style={{
           background:
-            "linear-gradient(180deg, rgba(0,255,51,0.5) 0%, rgba(0,255,51,0.25) 50%, transparent 100%)",
+            "linear-gradient(180deg, rgba(0,255,51,0.35) 0%, rgba(0,255,51,0.15) 60%, transparent 100%)",
         }}
         aria-hidden="true"
       />
-      {/* Header gradient glow */}
+      {/* Header gradient glow - subtle and bounded */}
       <div
-        className="pointer-events-none absolute -left-20 -top-20 h-40 w-40 opacity-30"
+        className="pointer-events-none absolute -left-16 -top-16 h-32 w-32 opacity-[0.12]"
         style={{
           background:
-            "radial-gradient(circle, rgba(0,255,51,0.15) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(0,255,51,0.3) 0%, transparent 65%)",
         }}
         aria-hidden="true"
       />
-      <div className="relative flex flex-1 flex-col p-6 lg:p-8">
+      <div className="relative flex flex-1 flex-col p-6 lg:p-7">
         {/* Compact label header */}
-        <div className="mb-5 flex items-center gap-2.5">
+        <div className="mb-4 flex items-center gap-2.5">
           <div
             className={cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-              "bg-primary/10 text-primary/80",
-              "transition-colors duration-200 group-hover:bg-primary/15 group-hover:text-primary"
+              "bg-primary/8 text-primary/70",
+              "transition-colors duration-200 group-hover:bg-primary/12 group-hover:text-primary/90"
             )}
           >
             {icon}
           </div>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-primary/70">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-primary/60">
             {subtitle}
           </span>
         </div>
-        {/* Main content - larger, hero treatment */}
+        {/* Main content - hero treatment with readability max-width */}
         <div className="module-content narrative-premium-content narrative-premium-vision flex-1">
           {isEmpty ? (
             <EmptyStateVision text={emptyText} />
           ) : (
-            <div className="max-w-[55ch]">{children}</div>
+            <div className="max-w-[72ch]">{children}</div>
           )}
         </div>
       </div>
@@ -202,43 +202,43 @@ const ProgressPanel = React.forwardRef<
       id={id}
       className={cn(
         "group relative flex h-full flex-col overflow-hidden rounded-2xl",
-        "border border-border/50",
-        "bg-card/35 backdrop-blur-sm",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
+        "border border-border/40",
+        "bg-card/30 backdrop-blur-sm",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2",
-        "scroll-mt-[var(--warp-anchor-offset)]",
+        "scroll-mt-24",
         "transition-all duration-200 ease-out",
-        "hover:border-border/65 hover:bg-card/45",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_0_24px_-8px_rgba(0,255,51,0.08)]",
+        "hover:border-border/50 hover:bg-card/38",
+        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_20px_-10px_rgba(0,255,51,0.06)]",
         className
       )}
       style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
     >
-      {/* Top accent line */}
+      {/* Top accent line - refined */}
       <div
-        className="absolute left-0 right-0 top-0 h-[2px]"
+        className="absolute left-0 right-0 top-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.25) 30%, rgba(0,255,51,0.35) 50%, rgba(0,255,51,0.25) 70%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.18) 30%, rgba(0,255,51,0.25) 50%, rgba(0,255,51,0.18) 70%, transparent 100%)",
         }}
         aria-hidden="true"
       />
       <div className="relative flex flex-1 flex-col p-5 lg:p-6">
-        <div className="mb-4 flex items-center gap-2.5">
+        <div className="mb-3.5 flex items-center gap-2.5">
           <div
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-              "bg-primary/8 text-primary/60",
-              "transition-colors duration-200 group-hover:bg-primary/12 group-hover:text-primary/80"
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+              "bg-primary/6 text-primary/50",
+              "transition-colors duration-200 group-hover:bg-primary/10 group-hover:text-primary/70"
             )}
           >
             {icon}
           </div>
           <div>
-            <h2 className="text-[14px] font-semibold tracking-tight text-foreground/90">
+            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/85">
               {title}
             </h2>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/45">
               {subtitle}
             </p>
           </div>
@@ -281,43 +281,43 @@ const RoadmapPanel = React.forwardRef<
       id={id}
       className={cn(
         "group relative flex h-full flex-col overflow-hidden rounded-2xl",
-        "border border-border/50",
-        "bg-card/35 backdrop-blur-sm",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
+        "border border-border/40",
+        "bg-card/30 backdrop-blur-sm",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2",
-        "scroll-mt-[var(--warp-anchor-offset)]",
+        "scroll-mt-24",
         "transition-all duration-200 ease-out",
-        "hover:border-border/65 hover:bg-card/45",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_0_24px_-8px_rgba(0,255,51,0.08)]",
+        "hover:border-border/50 hover:bg-card/38",
+        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_20px_-10px_rgba(0,255,51,0.06)]",
         className
       )}
-      style={{ animationDelay: "150ms", animationFillMode: "backwards" }}
+      style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
     >
-      {/* Left accent rail */}
+      {/* Left accent rail - refined */}
       <div
-        className="absolute bottom-0 left-0 top-0 w-[2px]"
+        className="absolute bottom-0 left-0 top-0 w-px"
         style={{
           background:
-            "linear-gradient(180deg, rgba(0,255,51,0.3) 0%, rgba(0,255,51,0.15) 70%, transparent 100%)",
+            "linear-gradient(180deg, rgba(0,255,51,0.2) 0%, rgba(0,255,51,0.1) 70%, transparent 100%)",
         }}
         aria-hidden="true"
       />
       <div className="relative flex flex-1 flex-col p-5 lg:p-6">
-        <div className="mb-4 flex items-center gap-2.5">
+        <div className="mb-3.5 flex items-center gap-2.5">
           <div
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-              "bg-primary/8 text-primary/60",
-              "transition-colors duration-200 group-hover:bg-primary/12 group-hover:text-primary/80"
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+              "bg-primary/6 text-primary/50",
+              "transition-colors duration-200 group-hover:bg-primary/10 group-hover:text-primary/70"
             )}
           >
             {icon}
           </div>
           <div>
-            <h2 className="text-[14px] font-semibold tracking-tight text-foreground/90">
+            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/85">
               {title}
             </h2>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/45">
               {subtitle}
             </p>
           </div>
@@ -407,7 +407,7 @@ function DesktopSectionNav({
 }) {
   return (
     <nav
-      className="mb-6 hidden items-center gap-1 lg:flex"
+      className="mb-5 hidden items-center gap-0.5 lg:flex"
       aria-label="Section navigation"
     >
       {sections.map((section, index) => {
@@ -415,22 +415,31 @@ function DesktopSectionNav({
         return (
           <React.Fragment key={section.key}>
             {index > 0 && (
-              <span className="mx-3 h-4 w-px bg-border/40" aria-hidden="true" />
+              <span className="mx-2.5 h-3.5 w-px bg-border/30" aria-hidden="true" />
             )}
             <button
               type="button"
               onClick={() => onNavigate(section.key)}
               className={cn(
-                "group/nav flex items-center gap-2 rounded-lg px-3 py-1.5",
-                "text-[13px] font-medium text-muted-foreground/70",
+                "group/nav relative flex items-center gap-2 rounded-lg px-3 py-1.5",
+                "text-[13px] font-medium text-muted-foreground/60",
                 "transition-all duration-200",
-                "hover:bg-card/30 hover:text-foreground/90"
+                "hover:bg-card/40 hover:text-foreground"
               )}
             >
-              <span className="text-primary/50 transition-colors duration-200 group-hover/nav:text-primary/80">
+              <span className="text-primary/40 transition-colors duration-200 group-hover/nav:text-primary/70">
                 {config.icon}
               </span>
               <span>{section.label}</span>
+              {/* Subtle underline on hover */}
+              <span
+                className={cn(
+                  "absolute bottom-0.5 left-3 right-3 h-px",
+                  "bg-primary/0 transition-colors duration-200",
+                  "group-hover/nav:bg-primary/30"
+                )}
+                aria-hidden="true"
+              />
             </button>
           </React.Fragment>
         );
@@ -509,53 +518,15 @@ export function NarrativePremiumLayout({
   const roadmapSection = sections.find((s) => s.key === "roadmap");
 
   return (
-    <article className="relative w-full max-w-none">
-      {/* Canvas background treatment */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-        aria-hidden="true"
-      >
-        {/* Radial gradient wash */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 60% at 30% 20%, rgba(0,0,0,0.3) 0%, transparent 70%)",
-          }}
-        />
-        {/* Warp green accent glow */}
-        <div
-          className="absolute -left-32 -top-32 h-64 w-64 opacity-20 motion-safe:animate-pulse"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(0,255,51,0.15) 0%, transparent 60%)",
-            animationDuration: "8s",
-          }}
-        />
-        {/* Subtle noise texture via CSS gradients */}
-        <div
-          className="absolute inset-0 opacity-[0.015]"
-          style={{
-            backgroundImage: `
-              repeating-linear-gradient(
-                45deg,
-                transparent,
-                transparent 2px,
-                rgba(255,255,255,0.03) 2px,
-                rgba(255,255,255,0.03) 4px
-              )
-            `,
-          }}
-        />
-      </div>
-
+    <article className="narrative-premium relative w-full max-w-none">
+      {/* Header renders on clean background - no canvas artifacts */}
       {showHeader && (
-        <header className="mb-8 space-y-2">
-          <h1 className="text-[24px] font-semibold leading-[1.25] tracking-[-0.025em] text-foreground">
+        <header className="mb-6 space-y-1.5">
+          <h1 className="text-[26px] font-semibold leading-[1.2] tracking-[-0.02em] text-foreground">
             {title}
           </h1>
           {description && (
-            <p className="max-w-[65ch] text-[14px] leading-[1.65] text-muted-foreground/85">
+            <p className="max-w-[72ch] text-[14px] leading-[1.6] text-muted-foreground/80">
               {description}
             </p>
           )}
@@ -572,52 +543,81 @@ export function NarrativePremiumLayout({
         />
       </div>
 
-      {/* Desktop: 2-column bento grid */}
-      <div className="hidden gap-5 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_auto]">
-        {/* Left: Vision panel spans 7 cols and 2 rows */}
-        {visionSection && (
-          <div className="lg:col-span-7 lg:row-span-2">
-            {renderPanel(
-              visionSection,
-              SECTION_CONFIG["end-vision"] ?? DEFAULT_CONFIG,
-              "h-full"
-            )}
-          </div>
-        )}
-        {/* Right top: Progress panel */}
-        {progressSection && (
-          <div className="lg:col-span-5">
-            {renderPanel(
-              progressSection,
-              SECTION_CONFIG["progress"] ?? DEFAULT_CONFIG
-            )}
-          </div>
-        )}
-        {/* Right bottom: Roadmap panel */}
-        {roadmapSection && (
-          <div className="lg:col-span-5">
-            {renderPanel(
-              roadmapSection,
-              SECTION_CONFIG["roadmap"] ?? DEFAULT_CONFIG
-            )}
-          </div>
-        )}
-      </div>
+      {/* Content area with premium canvas background */}
+      <div className="relative isolate">
+        {/* Premium canvas - only behind panels, not header */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl"
+          aria-hidden="true"
+        >
+          {/* Soft radial depth wash */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 90% 70% at 25% 30%, rgba(0,0,0,0.15) 0%, transparent 60%)",
+            }}
+          />
+          {/* Warp green accent glow - very subtle */}
+          <div
+            className="absolute -left-24 -top-24 h-48 w-48 opacity-[0.08] motion-safe:animate-pulse"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(0,255,51,0.25) 0%, transparent 70%)",
+              animationDuration: "10s",
+            }}
+          />
+        </div>
 
-      {/* Mobile: Single panel view */}
-      <div className="lg:hidden">
-        {sections.map((section) => {
-          if (section.key !== activeTab) return null;
-          const config = SECTION_CONFIG[section.key] ?? DEFAULT_CONFIG;
-          return (
-            <div
-              key={section.key}
-              className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150"
-            >
-              {renderPanel(section, config)}
+        {/* Desktop: 2-column bento grid */}
+        <div className="hidden gap-6 lg:grid lg:grid-cols-12">
+          {/* Left: Vision panel spans 7 cols */}
+          {visionSection && (
+            <div className="lg:col-span-7 lg:row-span-2">
+              {renderPanel(
+                visionSection,
+                SECTION_CONFIG["end-vision"] ?? DEFAULT_CONFIG,
+                "h-full min-h-[320px]"
+              )}
             </div>
-          );
-        })}
+          )}
+          {/* Right top: Progress panel */}
+          {progressSection && (
+            <div className="lg:col-span-5">
+              {renderPanel(
+                progressSection,
+                SECTION_CONFIG["progress"] ?? DEFAULT_CONFIG,
+                "min-h-[180px]"
+              )}
+            </div>
+          )}
+          {/* Right bottom: Roadmap panel */}
+          {roadmapSection && (
+            <div className="lg:col-span-5">
+              {renderPanel(
+                roadmapSection,
+                SECTION_CONFIG["roadmap"] ?? DEFAULT_CONFIG,
+                "min-h-[180px]"
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile: Single panel view */}
+        <div className="lg:hidden">
+          {sections.map((section) => {
+            if (section.key !== activeTab) return null;
+            const config = SECTION_CONFIG[section.key] ?? DEFAULT_CONFIG;
+            return (
+              <div
+                key={section.key}
+                className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150"
+              >
+                {renderPanel(section, config)}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </article>
   );
