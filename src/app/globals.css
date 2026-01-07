@@ -124,6 +124,39 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * Premium Grain Overlay - Eliminates gradient banding on dark surfaces
+ * Industry-standard dithering technique for 8-bit color displays
+ * ────────────────────────────────────────────────────────────────────────────*/
+
+.warp-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.04;
+  z-index: 1;
+  /* Tiny 4x4 noise pattern as base64 PNG - creates subtle dithering effect */
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXWBgYGHh4d5eXlzc3Oeli0teleXl5NTU1Oeli0teleNjY1xcXeli0teleGeli0teleXeli0teleWeli0teleXeli0tLS0AAAAu7cqpAAAAF3RSTlMAAQIJCg8teleRIyQlJi0teleHh4eHsLCx0teleNDQ4OD/AHBT0gAAAAFiS0dEAIgFHUgAAAAnSURBVEjH7cExAQAAAMKg9U/tDQ+gAAAAAAAAAAAAAAAAAAAAeAO8NAAB+5O1SQAAAABJRU5ErkJggg==");
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+}
+
+/* Canvas-level grain (slightly more visible) */
+.warp-grain-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.035;
+  z-index: 0;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXWBgYGHh4d5eXlzc3Oeli0teleXl5NTU1Oeli0teleNjY1xcXeli0teleGeli0teleXeli0teleWeli0teleXeli0tLS0AAAAu7cqpAAAAF3RSTlMAAQIJCg8teleRIyQlJi0teleHh4eHsLCx0teleNDQ4OD/AHBT0gAAAAFiS0dEAIgFHUgAAAAnSURBVEjH7cExAQAAAMKg9U/tDQ+gAAAAAAAAAAAAAAAAAAAAeAO8NAAB+5O1SQAAAABJRU5ErkJggg==");
+  background-repeat: repeat;
+  mix-blend-mode: soft-light;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Narrative Premium Layout - Content Styles
  * All selectors scoped under .narrative-premium parent to prevent leakage
  * ────────────────────────────────────────────────────────────────────────────*/

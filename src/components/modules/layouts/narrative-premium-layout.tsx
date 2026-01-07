@@ -116,38 +116,38 @@ const VisionPanel = React.forwardRef<
       aria-label={title}
       className={cn(
         // Outer root: overflow-hidden + isolate ensures all FX are clipped
-        "group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
-        "border border-border/30",
-        "bg-gradient-to-br from-card/35 via-card/25 to-card/15",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]",
+        // Solid bg instead of gradient to eliminate banding
+        "warp-grain group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        "border border-border/25",
+        "bg-card/30",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.015)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
         "scroll-mt-20",
-        "transition-all duration-200 ease-out",
-        "hover:border-border/45 hover:from-card/40 hover:via-card/30 hover:to-card/20",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
+        "transition-[border-color,background-color] duration-200 ease-out",
+        "hover:border-border/40 hover:bg-card/38",
         className
       )}
       style={{ animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped by overflow-hidden, no blur/filter) ══ */}
+      {/* ══ FX Layer (clipped, no blur, no edge-touching elements) ══ */}
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
         aria-hidden="true"
       >
-        {/* Left accent rail - subtle gradient inside bounds */}
+        {/* Left accent rail - inset 1px from edge to avoid clipping artifacts */}
         <div
-          className="absolute bottom-0 left-0 top-0 w-px"
+          className="absolute bottom-2 left-[1px] top-2 w-px"
           style={{
             background:
-              "linear-gradient(180deg, rgba(0,255,51,0.22) 0%, rgba(0,255,51,0.08) 60%, transparent 100%)",
+              "linear-gradient(180deg, rgba(0,255,51,0.18) 0%, rgba(0,255,51,0.06) 60%, transparent 100%)",
           }}
         />
-        {/* Corner glow - NO blur, uses large soft radial gradient instead */}
+        {/* Corner accent - positioned INSIDE panel (8px offset), soft multi-stop gradient */}
         <div
-          className="absolute left-0 top-0 h-32 w-32"
+          className="absolute left-2 top-2 h-24 w-24"
           style={{
             background:
-              "radial-gradient(ellipse 100% 100% at 0% 0%, rgba(0,255,51,0.04) 0%, rgba(0,255,51,0.02) 40%, transparent 70%)",
+              "radial-gradient(ellipse 100% 100% at 0% 0%, rgba(0,255,51,0.025) 0%, rgba(0,255,51,0.012) 35%, rgba(0,255,51,0.004) 55%, transparent 75%)",
           }}
         />
       </div>
@@ -206,30 +206,29 @@ const ProgressPanel = React.forwardRef<
       id={id}
       className={cn(
         // Outer root: overflow-hidden + isolate ensures all FX are clipped
-        "group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
-        "border border-border/30",
-        "bg-card/20",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.015)]",
+        "warp-grain group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        "border border-border/25",
+        "bg-card/22",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.01)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
         "scroll-mt-20",
-        "transition-all duration-200 ease-out",
-        "hover:border-border/40 hover:bg-card/28",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.025)]",
+        "transition-[border-color,background-color] duration-200 ease-out",
+        "hover:border-border/38 hover:bg-card/30",
         className
       )}
       style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped, no blur/filter) ══ */}
+      {/* ══ FX Layer (clipped, no edge-touching elements) ══ */}
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
         aria-hidden="true"
       >
-        {/* Top accent line - subtle */}
+        {/* Top accent line - inset from edges */}
         <div
-          className="absolute left-0 right-0 top-0 h-px"
+          className="absolute left-3 right-3 top-[1px] h-px"
           style={{
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.10) 30%, rgba(0,255,51,0.14) 50%, rgba(0,255,51,0.10) 70%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.08) 25%, rgba(0,255,51,0.12) 50%, rgba(0,255,51,0.08) 75%, transparent 100%)",
           }}
         />
       </div>
@@ -289,30 +288,29 @@ const RoadmapPanel = React.forwardRef<
       id={id}
       className={cn(
         // Outer root: overflow-hidden + isolate ensures all FX are clipped
-        "group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
-        "border border-border/30",
-        "bg-card/20",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.015)]",
+        "warp-grain group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        "border border-border/25",
+        "bg-card/22",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.01)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
         "scroll-mt-20",
-        "transition-all duration-200 ease-out",
-        "hover:border-border/40 hover:bg-card/28",
-        "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.025)]",
+        "transition-[border-color,background-color] duration-200 ease-out",
+        "hover:border-border/38 hover:bg-card/30",
         className
       )}
       style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped, no blur/filter) ══ */}
+      {/* ══ FX Layer (clipped, no edge-touching elements) ══ */}
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
         aria-hidden="true"
       >
-        {/* Left accent rail - subtle */}
+        {/* Left accent rail - inset from edges */}
         <div
-          className="absolute bottom-0 left-0 top-0 w-px"
+          className="absolute bottom-3 left-[1px] top-3 w-px"
           style={{
             background:
-              "linear-gradient(180deg, rgba(0,255,51,0.12) 0%, rgba(0,255,51,0.04) 70%, transparent 100%)",
+              "linear-gradient(180deg, rgba(0,255,51,0.10) 0%, rgba(0,255,51,0.03) 70%, transparent 100%)",
           }}
         />
       </div>
@@ -585,31 +583,16 @@ export function NarrativePremiumLayout({
       {/* ═══════════════════════════════════════════════════════════════════════
           CANVAS ZONE - Premium background effects scoped here only
           ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="relative isolate pt-1">
-        {/* Subtle top boundary line */}
+      <div className="warp-grain-canvas relative isolate overflow-hidden rounded-xl pt-1">
+        {/* Subtle top boundary line - inset from edges */}
         <div
-          className="pointer-events-none absolute left-0 right-0 top-0 h-px"
+          className="pointer-events-none absolute left-4 right-4 top-0 h-px"
           style={{
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.03) 75%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.025) 30%, rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.025) 70%, transparent 100%)",
           }}
           aria-hidden="true"
         />
-
-        {/* Canvas background - no negative offsets, no blur filters */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-          aria-hidden="true"
-        >
-          {/* Subtle depth wash - very soft */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 70% 50% at 35% 35%, rgba(0,0,0,0.05) 0%, transparent 50%)",
-            }}
-          />
-        </div>
 
         {/* Desktop: 2-column bento grid */}
         <div className="relative z-10 hidden gap-5 lg:grid lg:grid-cols-12">
