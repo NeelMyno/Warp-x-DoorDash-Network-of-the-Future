@@ -4,7 +4,7 @@
  */
 
 /** Layout type for module pages */
-export type ModuleLayoutType = "narrative" | "calculator" | "pdf";
+export type ModuleLayoutType = "narrative" | "calculator" | "pdf" | "full_bleed_single_section";
 
 /** Known module slugs (for type safety) */
 export type ModuleSlug =
@@ -35,6 +35,12 @@ export interface ModuleRegistryEntry {
   tabs?: ModuleTabs;
   /** Optional icon key for sidebar/cards */
   navIconKey?: string;
+  /**
+   * For single-section layouts: which section key to render.
+   * When set, rendering is STRICT (no fallback to other sections).
+   * If the specified section is empty, show empty state.
+   */
+  primarySectionKey?: string;
 }
 
 /**
@@ -109,8 +115,10 @@ export const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     slug: "year-in-review",
     name: "2025 Year in Review",
     description: "Completed loads by vehicle type for 2025.",
-    layout: "narrative",
+    layout: "full_bleed_single_section",
     navIconKey: "chart",
+    // Strict: only render end-vision, never fall back to other sections
+    primarySectionKey: "end-vision",
   },
 ];
 

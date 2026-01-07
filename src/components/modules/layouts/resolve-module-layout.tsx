@@ -4,6 +4,7 @@ import type { ContentBlock } from "@/config/modules";
 import type { ModuleRegistryEntry } from "@/lib/modules/registry";
 import type { SfsDensityTier, SfsRateCard } from "@/lib/sfs-calculator/types";
 import type { SfsConfigError } from "../sfs/sfs-calculator";
+import { FullBleedSingleSectionLayout } from "./full-bleed-single-section-layout";
 import { NarrativeModuleLayout } from "./narrative-module-layout";
 import { PdfModuleLayout } from "./pdf-module-layout";
 import { SfsCalculatorModuleLayout } from "../sfs/sfs-calculator-module-layout";
@@ -76,6 +77,19 @@ export function resolveModuleLayout({
           blocks={allBlocks}
           moduleSlug={moduleEntry.slug}
           isAdmin={isAdmin}
+        />
+      );
+
+    case "full_bleed_single_section":
+      // Full-width single section layout (e.g., Year in Review)
+      // Renders only the specified section without card wrapper
+      return (
+        <FullBleedSingleSectionLayout
+          title={title}
+          description={description}
+          sections={sections}
+          isAdmin={isAdmin}
+          primarySectionKey={moduleEntry.primarySectionKey}
         />
       );
 

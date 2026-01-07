@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import type { ContentBlock, ModuleConfig, ModuleSectionKey, MetricsFlowIconKey, MetricsFlowItem } from "@/config/modules";
+import { getModuleBySlug } from "@/lib/modules/registry";
 import type { AuditEvent } from "@/app/(authed)/admin/actions";
 import {
   listAuditEvents,
@@ -42,6 +43,7 @@ import { PdfBlock } from "@/components/blocks/PdfBlock";
 import { BulletBlock } from "@/components/blocks/BulletBlock";
 import { ProseBlock } from "@/components/blocks/ProseBlock";
 import { AssetPickerDialog } from "@/components/admin/asset-picker";
+import { MetricsFlowCard } from "@/components/modules/year-in-review/MetricsFlowCard";
 
 type StudioMode = "edit" | "history";
 
@@ -110,6 +112,25 @@ function getAllowedBlockTypes(moduleSlug: string): ContentBlock["type"][] {
 
 function isBlockTypeAllowed(moduleSlug: string, blockType: ContentBlock["type"]): boolean {
   return getAllowedBlockTypes(moduleSlug).includes(blockType);
+}
+
+/**
+ * Check if a module uses full_bleed_single_section layout.
+ * These modules only render the primary section on the user-facing page.
+ */
+function isSingleSectionModule(moduleSlug: string): boolean {
+  const entry = getModuleBySlug(moduleSlug);
+  return entry?.layout === "full_bleed_single_section";
+}
+
+/**
+ * Get the required section key for single-section modules.
+ * Falls back to "end-vision" if not specified.
+ */
+function getSingleSectionKey(moduleSlug: string): ModuleSectionKey {
+  const entry = getModuleBySlug(moduleSlug);
+  const key = entry?.primarySectionKey ?? "end-vision";
+  return isModuleSectionKey(key) ? key : "end-vision";
 }
 
 function formatRelativeTime(iso: string) {
@@ -240,26 +261,17 @@ function BlockPreview({ block }: { block: ContentBlock }) {
   }
 
   if (block.type === "metrics_flow") {
-    const total = block.metrics.reduce((sum, m) => sum + m.value, 0);
-    const previewMetrics = block.metrics.slice(0, 3);
-    const hasMore = block.metrics.length > 3;
+    // Use the same MetricsFlowCard component in compact mode for consistent styling
     return (
-      <ContentPanel title={block.title} description={block.subtitle} className="bg-gradient-to-br from-warp-accent/5 to-transparent">
-        <div className="space-y-3">
-          {previewMetrics.map((m) => (
-            <div key={m.key} className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{m.label}</span>
-              <span className="tabular-nums font-medium">{m.value.toLocaleString("en-US")}</span>
-            </div>
-          ))}
-          {hasMore && (
-            <div className="text-xs text-muted-foreground">+{block.metrics.length - 3} more</div>
-          )}
-          <div className="border-t border-border pt-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">{block.totalLabel}</span>
-            <span className="text-lg font-semibold tabular-nums">{total.toLocaleString("en-US")}</span>
-          </div>
-        </div>
+      <ContentPanel className="bg-gradient-to-br from-warp-accent/5 to-transparent">
+        <MetricsFlowCard
+          title={block.title}
+          subtitle={block.subtitle}
+          totalLabel={block.totalLabel}
+          metrics={block.metrics}
+          isAdmin={true}
+          compact={true}
+        />
       </ContentPanel>
     );
   }
@@ -1442,6 +1454,10 @@ export function ContentStudio({
                     type="button"
                     onClick={() => {
                       setActiveModule(m.slug);
+                      // Reset to primary section for single-section modules
+                      if (isSingleSectionModule(m.slug)) {
+                        setActiveSection(getSingleSectionKey(m.slug));
+                      }
                       setNotice(null);
                       setEditingIndex(null);
                       setRestoreTarget(null);
@@ -1514,11 +1530,25 @@ export function ContentStudio({
                 >
                   <div className="space-y-3">
                     <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                      <TabsList>
-                        <TabsTrigger value="end-vision">End vision</TabsTrigger>
-                        <TabsTrigger value="progress">Progress</TabsTrigger>
-                        <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
-                      </TabsList>
+                      {isSingleSectionModule(activeModule) ? (
+                        <div className="flex items-center gap-3">
+                          <TabsList>
+                            <TabsTrigger value={getSingleSectionKey(activeModule)}>
+                              {getSingleSectionKey(activeModule) === "end-vision" ? "End vision" :
+                               getSingleSectionKey(activeModule) === "progress" ? "Progress" : "Roadmap"}
+                            </TabsTrigger>
+                          </TabsList>
+                          <span className="text-xs text-muted-foreground">
+                            Only this section is rendered on the module page.
+                          </span>
+                        </div>
+                      ) : (
+                        <TabsList>
+                          <TabsTrigger value="end-vision">End vision</TabsTrigger>
+                          <TabsTrigger value="progress">Progress</TabsTrigger>
+                          <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
+                        </TabsList>
+                      )}
 
                       <div className="flex flex-wrap items-center gap-2">
                         {activeMode === "edit" ? (
