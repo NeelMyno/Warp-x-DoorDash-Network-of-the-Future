@@ -122,21 +122,6 @@ const VisionPanel = React.forwardRef<
       )}
       style={{ animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped, no blur, no edge-touching elements) ══ */}
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
-        aria-hidden="true"
-      >
-        {/* Left accent rail - inset 1px from edge to avoid clipping artifacts */}
-        <div
-          className="absolute bottom-2 left-[1px] top-2 w-px"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,255,51,0.18) 0%, rgba(0,255,51,0.06) 60%, transparent 100%)",
-          }}
-        />
-      </div>
-
       {/* ══ Content Layer ══ */}
       <div className="relative z-10 p-5 lg:p-6">
         <div className="mb-3 flex items-center gap-2">
@@ -204,21 +189,6 @@ const ProgressPanel = React.forwardRef<
       )}
       style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped, no edge-touching elements) ══ */}
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
-        aria-hidden="true"
-      >
-        {/* Top accent line - inset from edges */}
-        <div
-          className="absolute left-3 right-3 top-[1px] h-px"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(0,255,51,0.08) 25%, rgba(0,255,51,0.12) 50%, rgba(0,255,51,0.08) 75%, transparent 100%)",
-          }}
-        />
-      </div>
-
       {/* ══ Content Layer ══ */}
       <div className="relative z-10 p-4 lg:p-5">
         <div className="mb-3 flex items-center gap-2">
@@ -287,21 +257,6 @@ const RoadmapPanel = React.forwardRef<
       )}
       style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
     >
-      {/* ══ FX Layer (clipped, no edge-touching elements) ══ */}
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
-        aria-hidden="true"
-      >
-        {/* Left accent rail - inset from edges */}
-        <div
-          className="absolute bottom-3 left-[1px] top-3 w-px"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,255,51,0.10) 0%, rgba(0,255,51,0.03) 70%, transparent 100%)",
-          }}
-        />
-      </div>
-
       {/* ══ Content Layer ══ */}
       <div className="relative z-10 p-4 lg:p-5">
         <div className="mb-3 flex items-center gap-2">
