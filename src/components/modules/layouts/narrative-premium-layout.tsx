@@ -287,53 +287,6 @@ const RoadmapPanel = React.forwardRef<
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section Jump Nav - Compact anchor links (works on all screen sizes)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SectionJumpNav({
-  sections,
-  onNavigate,
-}: {
-  sections: { key: string; label: string }[];
-  onNavigate: (key: string) => void;
-}) {
-  return (
-    <nav
-      className="relative z-10 mb-4 flex flex-wrap items-center gap-1"
-      aria-label="Jump to section"
-    >
-      <span className="mr-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/40">
-        Jump to:
-      </span>
-      {sections.map((section, index) => {
-        const config = SECTION_CONFIG[section.key] ?? DEFAULT_CONFIG;
-        return (
-          <React.Fragment key={section.key}>
-            {index > 0 && (
-              <span className="mx-1 h-3 w-px bg-border/20" aria-hidden="true" />
-            )}
-            <button
-              type="button"
-              onClick={() => onNavigate(section.key)}
-              className={cn(
-                "group/nav flex items-center gap-1.5 rounded-md px-2 py-1",
-                "text-[12px] font-medium transition-all duration-200",
-                "text-muted-foreground/60 hover:bg-card/30 hover:text-foreground/85"
-              )}
-            >
-              <span className="text-primary/40 transition-colors duration-200 group-hover/nav:text-primary/70">
-                {config.icon}
-              </span>
-              <span>{section.label}</span>
-            </button>
-          </React.Fragment>
-        );
-      })}
-    </nav>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Render Panel - Dispatch to correct variant
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -383,19 +336,6 @@ export function NarrativePremiumLayout({
   description,
   sections,
 }: NarrativePremiumLayoutProps) {
-  // Navigate to section via ID (panels have id={section.key})
-  const handleNavigate = React.useCallback((key: string) => {
-    const el = document.getElementById(key);
-    if (!el) return;
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    el.scrollIntoView({
-      behavior: prefersReducedMotion ? "instant" : "smooth",
-      block: "start",
-    });
-  }, []);
-
   const showHeader = Boolean(title);
 
   // Lookup sections by key for rendering order
@@ -421,8 +361,7 @@ export function NarrativePremiumLayout({
         </header>
       )}
 
-      {/* Section jump nav - works on all screen sizes */}
-      <SectionJumpNav sections={sections} onNavigate={handleNavigate} />
+
 
       {/* ═══════════════════════════════════════════════════════════════════════
           CANVAS ZONE - Stacked vertical layout (full-width panels)
