@@ -135,14 +135,6 @@ const VisionPanel = React.forwardRef<
               "linear-gradient(180deg, rgba(0,255,51,0.18) 0%, rgba(0,255,51,0.06) 60%, transparent 100%)",
           }}
         />
-        {/* Corner accent - positioned INSIDE panel (8px offset), soft multi-stop gradient */}
-        <div
-          className="absolute left-2 top-2 h-24 w-24"
-          style={{
-            background:
-              "radial-gradient(ellipse 100% 100% at 0% 0%, rgba(0,255,51,0.025) 0%, rgba(0,255,51,0.012) 35%, rgba(0,255,51,0.004) 55%, transparent 75%)",
-          }}
-        />
       </div>
 
       {/* ══ Content Layer ══ */}
