@@ -117,18 +117,18 @@ const VisionPanel = React.forwardRef<
       style={{ animationFillMode: "backwards" }}
     >
       {/* ══ Content Layer ══ */}
-      <div className="relative z-10 p-5 lg:p-6">
-        <div className="mb-3 flex items-center gap-2">
+      <div className="relative z-10 p-5 lg:p-7">
+        <div className="mb-5 flex items-center gap-3">
           <div
             className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center rounded",
-              "bg-primary/4 text-primary/40",
-              "transition-colors duration-200 group-hover:bg-primary/6 group-hover:text-primary/60"
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+              "bg-primary/8 text-primary/60",
+              "transition-colors duration-200 group-hover:bg-primary/12 group-hover:text-primary/80"
             )}
           >
             {icon}
           </div>
-          <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
+          <h2 className="text-base font-semibold tracking-tight text-foreground/90">
             {title}
           </h2>
         </div>
@@ -183,18 +183,18 @@ const ProgressPanel = React.forwardRef<
       style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
     >
       {/* ══ Content Layer ══ */}
-      <div className="relative z-10 p-4 lg:p-5">
-        <div className="mb-3 flex items-center gap-2">
+      <div className="relative z-10 p-5 lg:p-7">
+        <div className="mb-5 flex items-center gap-3">
           <div
             className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center rounded",
-              "bg-primary/4 text-primary/40",
-              "transition-colors duration-200 group-hover:bg-primary/6 group-hover:text-primary/60"
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+              "bg-primary/8 text-primary/60",
+              "transition-colors duration-200 group-hover:bg-primary/12 group-hover:text-primary/80"
             )}
           >
             {icon}
           </div>
-          <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
+          <h2 className="text-base font-semibold tracking-tight text-foreground/90">
             {title}
           </h2>
         </div>
@@ -245,18 +245,18 @@ const RoadmapPanel = React.forwardRef<
       style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
     >
       {/* ══ Content Layer ══ */}
-      <div className="relative z-10 p-4 lg:p-5">
-        <div className="mb-3 flex items-center gap-2">
+      <div className="relative z-10 p-5 lg:p-7">
+        <div className="mb-5 flex items-center gap-3">
           <div
             className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center rounded",
-              "bg-primary/4 text-primary/40",
-              "transition-colors duration-200 group-hover:bg-primary/6 group-hover:text-primary/60"
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+              "bg-primary/8 text-primary/60",
+              "transition-colors duration-200 group-hover:bg-primary/12 group-hover:text-primary/80"
             )}
           >
             {icon}
           </div>
-          <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
+          <h2 className="text-base font-semibold tracking-tight text-foreground/90">
             {title}
           </h2>
         </div>
