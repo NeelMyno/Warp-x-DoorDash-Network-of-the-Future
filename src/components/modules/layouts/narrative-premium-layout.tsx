@@ -20,7 +20,6 @@ type SectionVariant = "vision" | "progress" | "roadmap";
 
 interface SectionConfig {
   icon: React.ReactNode;
-  subtitle: string;
   emptyText: string;
   variant: SectionVariant;
 }
@@ -28,19 +27,16 @@ interface SectionConfig {
 const SECTION_CONFIG: Record<string, SectionConfig> = {
   "end-vision": {
     icon: <Compass className="h-4 w-4" />,
-    subtitle: "North Star",
     emptyText: "No vision defined yet.",
     variant: "vision",
   },
   progress: {
     icon: <TrendingUp className="h-4 w-4" />,
-    subtitle: "What's true now",
     emptyText: "No updates yet.",
     variant: "progress",
   },
   roadmap: {
     icon: <MapIcon className="h-4 w-4" />,
-    subtitle: "What we'll do next",
     emptyText: "No roadmap defined yet.",
     variant: "roadmap",
   },
@@ -48,7 +44,6 @@ const SECTION_CONFIG: Record<string, SectionConfig> = {
 
 const DEFAULT_CONFIG: SectionConfig = {
   icon: <Compass className="h-4 w-4" />,
-  subtitle: "",
   emptyText: "No content yet.",
   variant: "vision",
 };
@@ -91,7 +86,6 @@ const VisionPanel = React.forwardRef<
   {
     id: string;
     title: string;
-    subtitle: string;
     icon: React.ReactNode;
     isEmpty?: boolean;
     emptyText: string;
@@ -99,7 +93,7 @@ const VisionPanel = React.forwardRef<
     className?: string;
   }
 >(function VisionPanel(
-  { id, title, subtitle, icon, isEmpty, emptyText, children, className },
+  { id, title, icon, isEmpty, emptyText, children, className },
   ref
 ) {
   return (
@@ -127,16 +121,16 @@ const VisionPanel = React.forwardRef<
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
-              "bg-primary/5 text-primary/55",
-              "transition-colors duration-200 group-hover:bg-primary/8 group-hover:text-primary/75"
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded",
+              "bg-primary/4 text-primary/40",
+              "transition-colors duration-200 group-hover:bg-primary/6 group-hover:text-primary/60"
             )}
           >
             {icon}
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/50">
-            {subtitle}
-          </span>
+          <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
+            {title}
+          </h2>
         </div>
         <div className="module-content narrative-premium-content narrative-premium-vision">
           {isEmpty ? (
@@ -159,7 +153,6 @@ const ProgressPanel = React.forwardRef<
   {
     id: string;
     title: string;
-    subtitle: string;
     icon: React.ReactNode;
     isEmpty?: boolean;
     emptyText: string;
@@ -167,7 +160,7 @@ const ProgressPanel = React.forwardRef<
     className?: string;
   }
 >(function ProgressPanel(
-  { id, title, subtitle, icon, isEmpty, emptyText, children, className },
+  { id, title, icon, isEmpty, emptyText, children, className },
   ref
 ) {
   return (
@@ -201,14 +194,9 @@ const ProgressPanel = React.forwardRef<
           >
             {icon}
           </div>
-          <div>
-            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
-              {title}
-            </h2>
-            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/35">
-              {subtitle}
-            </p>
-          </div>
+          <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
+            {title}
+          </h2>
         </div>
         <div className="module-content narrative-premium-content narrative-premium-progress">
           {isEmpty ? <EmptyStateProgress text={emptyText} /> : children}
@@ -227,7 +215,6 @@ const RoadmapPanel = React.forwardRef<
   {
     id: string;
     title: string;
-    subtitle: string;
     icon: React.ReactNode;
     isEmpty?: boolean;
     emptyText: string;
@@ -235,7 +222,7 @@ const RoadmapPanel = React.forwardRef<
     className?: string;
   }
 >(function RoadmapPanel(
-  { id, title, subtitle, icon, isEmpty, emptyText, children, className },
+  { id, title, icon, isEmpty, emptyText, children, className },
   ref
 ) {
   return (
@@ -269,14 +256,9 @@ const RoadmapPanel = React.forwardRef<
           >
             {icon}
           </div>
-          <div>
-            <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
-              {title}
-            </h2>
-            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/35">
-              {subtitle}
-            </p>
-          </div>
+          <h2 className="text-[13px] font-semibold tracking-tight text-foreground/75">
+            {title}
+          </h2>
         </div>
         <div className="module-content narrative-premium-content narrative-premium-roadmap">
           {isEmpty ? <EmptyStateRoadmap text={emptyText} /> : children}
@@ -298,7 +280,6 @@ function renderPanel(
   const commonProps = {
     id: section.key,
     title: section.label,
-    subtitle: config.subtitle,
     icon: config.icon,
     isEmpty: section.isEmpty,
     emptyText: config.emptyText,
