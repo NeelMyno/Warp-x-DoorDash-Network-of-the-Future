@@ -68,8 +68,7 @@ function EmptyStateVision({ text }: { text: string }) {
 
 function EmptyStateProgress({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border/40 bg-card/20 px-4 py-4">
-      <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+    <div className="flex items-center gap-3 rounded-lg border border-dashed border-border/40 bg-card/20 px-4 py-4">
       <p className="text-[13px] italic text-muted-foreground/60">{text}</p>
     </div>
   );
@@ -77,14 +76,8 @@ function EmptyStateProgress({ text }: { text: string }) {
 
 function EmptyStateRoadmap({ text }: { text: string }) {
   return (
-    <div className="flex items-start gap-3 py-2">
-      <div className="relative flex flex-col items-center">
-        <div className="h-3 w-3 rounded-full border-2 border-muted-foreground/30 bg-card" />
-        <div className="h-8 w-[2px] bg-border/30" />
-      </div>
-      <div className="flex-1 rounded-lg border border-dashed border-border/40 bg-card/20 px-4 py-3">
-        <p className="text-[13px] italic text-muted-foreground/60">{text}</p>
-      </div>
+    <div className="flex items-center gap-3 rounded-lg border border-dashed border-border/40 bg-card/20 px-4 py-4">
+      <p className="text-[13px] italic text-muted-foreground/60">{text}</p>
     </div>
   );
 }
@@ -116,8 +109,8 @@ const VisionPanel = React.forwardRef<
       aria-label={title}
       className={cn(
         // Outer root: overflow-hidden + isolate ensures all FX are clipped
-        // Solid bg instead of gradient to eliminate banding
-        "warp-grain group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        // No fixed heights - panel sizes to content
+        "warp-grain group relative isolate flex flex-col overflow-hidden rounded-xl",
         "border border-border/25",
         "bg-card/30",
         "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.015)]",
@@ -153,7 +146,7 @@ const VisionPanel = React.forwardRef<
       </div>
 
       {/* ══ Content Layer ══ */}
-      <div className="relative z-10 flex flex-1 flex-col p-5 lg:p-6">
+      <div className="relative z-10 p-5 lg:p-6">
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
@@ -168,7 +161,7 @@ const VisionPanel = React.forwardRef<
             {subtitle}
           </span>
         </div>
-        <div className="module-content narrative-premium-content narrative-premium-vision flex-1">
+        <div className="module-content narrative-premium-content narrative-premium-vision">
           {isEmpty ? (
             <EmptyStateVision text={emptyText} />
           ) : (
@@ -206,7 +199,8 @@ const ProgressPanel = React.forwardRef<
       id={id}
       className={cn(
         // Outer root: overflow-hidden + isolate ensures all FX are clipped
-        "warp-grain group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        // No fixed heights - panel sizes to content
+        "warp-grain group relative isolate flex flex-col overflow-hidden rounded-xl",
         "border border-border/25",
         "bg-card/22",
         "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.01)]",
@@ -234,7 +228,7 @@ const ProgressPanel = React.forwardRef<
       </div>
 
       {/* ══ Content Layer ══ */}
-      <div className="relative z-10 flex flex-1 flex-col p-4 lg:p-5">
+      <div className="relative z-10 p-4 lg:p-5">
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
@@ -254,7 +248,7 @@ const ProgressPanel = React.forwardRef<
             </p>
           </div>
         </div>
-        <div className="module-content narrative-premium-content narrative-premium-progress flex-1">
+        <div className="module-content narrative-premium-content narrative-premium-progress">
           {isEmpty ? <EmptyStateProgress text={emptyText} /> : children}
         </div>
       </div>
@@ -263,7 +257,7 @@ const ProgressPanel = React.forwardRef<
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Roadmap Panel - Timeline visual
+// Roadmap Panel - Bullet list (no timeline)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const RoadmapPanel = React.forwardRef<
@@ -288,7 +282,8 @@ const RoadmapPanel = React.forwardRef<
       id={id}
       className={cn(
         // Outer root: overflow-hidden + isolate ensures all FX are clipped
-        "warp-grain group relative isolate flex h-full flex-col overflow-hidden rounded-xl",
+        // No fixed heights - panel sizes to content
+        "warp-grain group relative isolate flex flex-col overflow-hidden rounded-xl",
         "border border-border/25",
         "bg-card/22",
         "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.01)]",
@@ -316,7 +311,7 @@ const RoadmapPanel = React.forwardRef<
       </div>
 
       {/* ══ Content Layer ══ */}
-      <div className="relative z-10 flex flex-1 flex-col p-4 lg:p-5">
+      <div className="relative z-10 p-4 lg:p-5">
         <div className="mb-3 flex items-center gap-2">
           <div
             className={cn(
@@ -336,7 +331,7 @@ const RoadmapPanel = React.forwardRef<
             </p>
           </div>
         </div>
-        <div className="module-content narrative-premium-content narrative-premium-roadmap flex-1">
+        <div className="module-content narrative-premium-content narrative-premium-roadmap">
           {isEmpty ? <EmptyStateRoadmap text={emptyText} /> : children}
         </div>
       </div>
@@ -345,129 +340,44 @@ const RoadmapPanel = React.forwardRef<
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mobile Section Tabs - Premium segmented control
+// Section Jump Nav - Compact anchor links (works on all screen sizes)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MobileSectionTabs({
-  sections,
-  activeKey,
-  onSelect,
-}: {
-  sections: { key: string; label: string }[];
-  activeKey: string;
-  onSelect: (key: string) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "relative flex w-full overflow-hidden rounded-xl p-1",
-        "border border-border/50 bg-card/25 backdrop-blur-sm"
-      )}
-    >
-      {sections.map((section) => {
-        const isActive = section.key === activeKey;
-        const config = SECTION_CONFIG[section.key] ?? DEFAULT_CONFIG;
-        return (
-          <button
-            key={section.key}
-            type="button"
-            onClick={() => onSelect(section.key)}
-            className={cn(
-              "relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5",
-              "text-[13px] font-medium transition-all duration-200",
-              isActive
-                ? "bg-card text-foreground shadow-md"
-                : "text-muted-foreground hover:text-foreground/80"
-            )}
-            aria-pressed={isActive}
-          >
-            <span
-              className={cn(
-                "transition-colors duration-200",
-                isActive ? "text-primary" : "text-muted-foreground/50"
-              )}
-            >
-              {config.icon}
-            </span>
-            <span>{section.label}</span>
-            {isActive && (
-              <div
-                className="absolute bottom-0 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full"
-                style={{ background: "rgba(0,255,51,0.5)" }}
-                aria-hidden="true"
-              />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Desktop Section Nav - Premium indicator bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-function DesktopSectionNav({
+function SectionJumpNav({
   sections,
   onNavigate,
 }: {
   sections: { key: string; label: string }[];
   onNavigate: (key: string) => void;
 }) {
-  const [activeKey, setActiveKey] = React.useState<string | null>(null);
-
-  const handleClick = (key: string) => {
-    setActiveKey(key);
-    onNavigate(key);
-  };
-
   return (
     <nav
-      className="relative z-10 mb-4 hidden items-center gap-0.5 lg:flex"
-      aria-label="Section navigation"
+      className="relative z-10 mb-4 flex flex-wrap items-center gap-1"
+      aria-label="Jump to section"
     >
+      <span className="mr-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/40">
+        Jump to:
+      </span>
       {sections.map((section, index) => {
         const config = SECTION_CONFIG[section.key] ?? DEFAULT_CONFIG;
-        const isActive = activeKey === section.key;
         return (
           <React.Fragment key={section.key}>
             {index > 0 && (
-              <span className="mx-2 h-3 w-px bg-border/25" aria-hidden="true" />
+              <span className="mx-1 h-3 w-px bg-border/20" aria-hidden="true" />
             )}
             <button
               type="button"
-              onClick={() => handleClick(section.key)}
+              onClick={() => onNavigate(section.key)}
               className={cn(
-                "group/nav relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5",
-                "text-[13px] font-medium transition-all duration-200",
-                isActive
-                  ? "text-foreground"
-                  : "text-muted-foreground/55 hover:bg-card/30 hover:text-foreground/85"
+                "group/nav flex items-center gap-1.5 rounded-md px-2 py-1",
+                "text-[12px] font-medium transition-all duration-200",
+                "text-muted-foreground/60 hover:bg-card/30 hover:text-foreground/85"
               )}
-              aria-current={isActive ? "true" : undefined}
             >
-              <span
-                className={cn(
-                  "transition-colors duration-200",
-                  isActive
-                    ? "text-primary/80"
-                    : "text-primary/35 group-hover/nav:text-primary/60"
-                )}
-              >
+              <span className="text-primary/40 transition-colors duration-200 group-hover/nav:text-primary/70">
                 {config.icon}
               </span>
               <span>{section.label}</span>
-              {/* Active/hover indicator */}
-              <span
-                className={cn(
-                  "absolute bottom-0 left-2 right-2 h-[2px] rounded-full transition-all duration-200",
-                  isActive
-                    ? "bg-primary/50"
-                    : "bg-transparent group-hover/nav:bg-primary/20"
-                )}
-                aria-hidden="true"
-              />
             </button>
           </React.Fragment>
         );
@@ -513,23 +423,19 @@ function renderPanel(
 
 /**
  * Premium full-width narrative layout for strategic module pages.
- * Desktop: 2-column bento (Vision anchors left, Progress/Roadmap stacked right).
- * Mobile: Segmented tabs with single panel view.
+ * All screen sizes: Stacked vertical layout with full-width panels.
+ * No tabs, no content hiding - all sections always visible.
  *
  * Structure:
  * 1. Header zone (clean, no background effects)
- * 2. Section nav
- * 3. Canvas zone (premium background effects scoped here only)
+ * 2. Section jump nav (anchor links to scroll)
+ * 3. Canvas zone (stacked panels with premium background effects)
  */
 export function NarrativePremiumLayout({
   title,
   description,
   sections,
 }: NarrativePremiumLayoutProps) {
-  const [activeTab, setActiveTab] = React.useState(
-    sections[0]?.key ?? "end-vision"
-  );
-
   // Navigate to section via ID (panels have id={section.key})
   const handleNavigate = React.useCallback((key: string) => {
     const el = document.getElementById(key);
@@ -545,7 +451,7 @@ export function NarrativePremiumLayout({
 
   const showHeader = Boolean(title);
 
-  // Lookup sections by key for grid placement
+  // Lookup sections by key for rendering order
   const visionSection = sections.find((s) => s.key === "end-vision");
   const progressSection = sections.find((s) => s.key === "progress");
   const roadmapSection = sections.find((s) => s.key === "roadmap");
@@ -568,20 +474,12 @@ export function NarrativePremiumLayout({
         </header>
       )}
 
-      {/* Desktop section nav */}
-      <DesktopSectionNav sections={sections} onNavigate={handleNavigate} />
-
-      {/* Mobile tabs */}
-      <div className="mb-4 lg:hidden">
-        <MobileSectionTabs
-          sections={sections}
-          activeKey={activeTab}
-          onSelect={setActiveTab}
-        />
-      </div>
+      {/* Section jump nav - works on all screen sizes */}
+      <SectionJumpNav sections={sections} onNavigate={handleNavigate} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          CANVAS ZONE - Premium background effects scoped here only
+          CANVAS ZONE - Stacked vertical layout (full-width panels)
+          All sections always visible, no tabs/hiding
           ═══════════════════════════════════════════════════════════════════════ */}
       <div className="warp-grain-canvas relative isolate overflow-hidden rounded-xl pt-1">
         {/* Subtle top boundary line - inset from edges */}
@@ -594,54 +492,23 @@ export function NarrativePremiumLayout({
           aria-hidden="true"
         />
 
-        {/* Desktop: 2-column bento grid */}
-        <div className="relative z-10 hidden gap-5 lg:grid lg:grid-cols-12">
-          {/* Left: Vision panel spans 7 cols and 2 rows */}
-          {visionSection && (
-            <div className="lg:col-span-7 lg:row-span-2">
-              {renderPanel(
-                visionSection,
-                SECTION_CONFIG["end-vision"] ?? DEFAULT_CONFIG,
-                "h-full min-h-[340px]"
-              )}
-            </div>
-          )}
-          {/* Right top: Progress panel */}
-          {progressSection && (
-            <div className="lg:col-span-5">
-              {renderPanel(
-                progressSection,
-                SECTION_CONFIG["progress"] ?? DEFAULT_CONFIG,
-                "min-h-[160px]"
-              )}
-            </div>
-          )}
-          {/* Right bottom: Roadmap panel */}
-          {roadmapSection && (
-            <div className="lg:col-span-5">
-              {renderPanel(
-                roadmapSection,
-                SECTION_CONFIG["roadmap"] ?? DEFAULT_CONFIG,
-                "min-h-[160px]"
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Mobile: Single panel view */}
-        <div className="relative z-10 lg:hidden">
-          {sections.map((section) => {
-            if (section.key !== activeTab) return null;
-            const config = SECTION_CONFIG[section.key] ?? DEFAULT_CONFIG;
-            return (
-              <div
-                key={section.key}
-                className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150"
-              >
-                {renderPanel(section, config)}
-              </div>
-            );
-          })}
+        {/* All sections stacked vertically (mobile + desktop) */}
+        <div className="relative z-10 flex flex-col gap-4 sm:gap-5">
+          {visionSection &&
+            renderPanel(
+              visionSection,
+              SECTION_CONFIG["end-vision"] ?? DEFAULT_CONFIG
+            )}
+          {progressSection &&
+            renderPanel(
+              progressSection,
+              SECTION_CONFIG["progress"] ?? DEFAULT_CONFIG
+            )}
+          {roadmapSection &&
+            renderPanel(
+              roadmapSection,
+              SECTION_CONFIG["roadmap"] ?? DEFAULT_CONFIG
+            )}
         </div>
       </div>
     </article>

@@ -159,7 +159,30 @@ body {
 /* ────────────────────────────────────────────────────────────────────────────
  * Narrative Premium Layout - Content Styles
  * All selectors scoped under .narrative-premium parent to prevent leakage
+ *
+ * IMPORTANT: Bullets are rendered via JSX (BulletBlock/MarkdownLite).
+ * CSS only provides list resets and typography - NO ::before bullets here.
  * ────────────────────────────────────────────────────────────────────────────*/
+
+/* Global list reset for narrative-premium - remove native markers */
+.narrative-premium .narrative-premium-content ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.narrative-premium .narrative-premium-content ul li {
+  list-style: none;
+}
+
+/* Explicitly remove any pseudo-element bullets (JSX handles bullets) */
+.narrative-premium .narrative-premium-content ul li::before,
+.narrative-premium .narrative-premium-content ul li::after,
+.narrative-premium .narrative-premium-content ul::before,
+.narrative-premium .narrative-premium-content ul::after {
+  content: none !important;
+  display: none !important;
+}
 
 /* Vision panel - hero text treatment */
 .narrative-premium .narrative-premium-vision p {
@@ -170,76 +193,10 @@ body {
 }
 
 .narrative-premium .narrative-premium-vision ul {
-  margin-top: 0.625rem;
-  list-style: none;
-  padding-left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
-.narrative-premium .narrative-premium-vision ul li {
-  position: relative;
-  padding-left: 1.125rem;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--foreground);
-  opacity: 0.92;
-}
-
-.narrative-premium .narrative-premium-vision ul li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.5em;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(0, 255, 51, 0.35);
-  box-shadow: 0 0 4px rgba(0, 255, 51, 0.2);
-}
-
-/* Progress panel - Status rows with subtle markers */
-.narrative-premium .narrative-premium-progress ul {
-  list-style: none;
-  padding-left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.narrative-premium .narrative-premium-progress ul li {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.015);
-  transition:
-    background 150ms ease-out,
-    transform 150ms ease-out;
-}
-
-/* Hover lift only on pointer devices */
-@media (hover: hover) and (pointer: fine) {
-  .narrative-premium .narrative-premium-progress ul li:hover {
-    background: rgba(255, 255, 255, 0.035);
-    transform: translateY(-1px);
-  }
-}
-
-.narrative-premium .narrative-premium-progress ul li::before {
-  content: "";
-  flex-shrink: 0;
-  width: 6px;
-  height: 6px;
-  margin-top: 0.4rem;
-  border-radius: 50%;
-  background: rgba(0, 255, 51, 0.4);
-  box-shadow: 0 0 5px rgba(0, 255, 51, 0.2);
-}
-
+/* Progress panel - text styling only */
 .narrative-premium .narrative-premium-progress p {
   font-size: 13px;
   line-height: 1.55;
@@ -247,63 +204,7 @@ body {
   opacity: 0.88;
 }
 
-/* Roadmap panel - Timeline visual */
-.narrative-premium .narrative-premium-roadmap ul {
-  list-style: none;
-  padding-left: 0;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* Vertical timeline line - thin and subtle */
-.narrative-premium .narrative-premium-roadmap ul::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 0.75rem;
-  bottom: 0.75rem;
-  width: 1px;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 255, 51, 0.18) 0%,
-    rgba(0, 255, 51, 0.08) 70%,
-    transparent 100%
-  );
-}
-
-.narrative-premium .narrative-premium-roadmap ul li {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.875rem;
-  padding: 0.4rem 0;
-  padding-left: 1.375rem;
-}
-
-/* Timeline node - refined */
-.narrative-premium .narrative-premium-roadmap ul li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.65rem;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--card);
-  border: 1.5px solid rgba(0, 255, 51, 0.3);
-  box-shadow: 0 0 4px rgba(0, 255, 51, 0.12);
-  z-index: 1;
-}
-
-/* First node slightly emphasized as "next" */
-.narrative-premium .narrative-premium-roadmap ul li:first-child::before {
-  background: rgba(0, 255, 51, 0.15);
-  border-color: rgba(0, 255, 51, 0.45);
-  box-shadow: 0 0 6px rgba(0, 255, 51, 0.2);
-}
-
+/* Roadmap panel - text styling only (plain list, no timeline) */
 .narrative-premium .narrative-premium-roadmap p {
   font-size: 13px;
   line-height: 1.55;

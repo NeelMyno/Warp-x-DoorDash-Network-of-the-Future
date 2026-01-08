@@ -76,10 +76,13 @@ export function MarkdownLite({
         }
 
         return (
-          <ul key={idx} className="space-y-2">
+          <ul key={idx} className="space-y-2.5">
             {b.items.map((item, i) => (
-              <li key={i} className="flex gap-2 leading-relaxed text-muted-foreground">
-                <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary/80" />
+              <li key={i} className="flex items-start gap-3 leading-relaxed text-muted-foreground">
+                <span
+                  className="mt-[8px] h-[5px] w-[5px] shrink-0 rounded-full bg-primary/50"
+                  aria-hidden="true"
+                />
                 <span>{item}</span>
               </li>
             ))}
